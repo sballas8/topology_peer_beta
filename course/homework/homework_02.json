@@ -1,0 +1,26 @@
+{
+  "id": "hw02",
+  "title": "Homework 2",
+  "available": true,
+  "week": 3,
+  "problems": [
+    {
+      "id": "p1",
+      "number": 1,
+      "title": "A basis generates a topology",
+      "statement": "Let $\\mathcal B$ be a basis on a set $X$. Prove that the collection of arbitrary unions of elements of $\\mathcal B$ is a topology on $X$."
+    },
+    {
+      "id": "p3",
+      "number": 3,
+      "title": "Continuity of the identity map",
+      "statement": "Let $\\mathcal T_1$ and $\\mathcal T_2$ be topologies on the same set $X$. Prove that the identity map $\\operatorname{id}:(X,\\mathcal T_1)\\to(X,\\mathcal T_2)$ is continuous if and only if $\\mathcal T_2\\subseteq\\mathcal T_1$."
+    },
+    {
+      "id": "p4",
+      "number": 4,
+      "title": "Checking continuity on a basis",
+      "statement": "Suppose $f:X\\to Y$ and $\\mathcal B$ is a basis for the topology on $Y$. Prove that $f$ is continuous if and only if $f^{-1}(B)$ is open in $X$ for every $B\\in\\mathcal B$."
+    }
+  ]
+}

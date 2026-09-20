@@ -1,0 +1,13 @@
+{
+  "week": 6,
+  "title": "Week 6 conversations",
+  "items": [
+    {
+      "id": "w6_interior_closure",
+      "title": "Week 6 \u2014 Conjecturing with interior and closure",
+      "statement": "Work with Topology Peer to investigate how interior and closure interact with unions and intersections. Formulate plausible identities involving $\\operatorname{int}(A\\cup B)$, $\\operatorname{int}(A\\cap B)$, $\\overline{A\\cup B}$, and $\\overline{A\\cap B}$. Test your conjectures on examples. When a conjecture fails, find a counterexample and see whether it can be replaced by a weaker statement that is always true. When you believe a statement is true, try to prove it.",
+      "initial_prompt": "Begin by inviting the student to make one plausible conjecture involving interior or closure and a union or intersection. Act as a conjecture-testing partner: test examples, seek counterexamples when appropriate, repair false statements, and then prove surviving statements. Do not list the standard identities at the outset.",
+      "tutor_instructions": "Once a conjecture has been resolved, give the student the first opportunity to propose the next conjecture or comparison rather than automatically moving through a predetermined list of interior/closure identities. Keep the exploration adaptive while still helping the student encounter a useful mix of true identities, false identities, counterexamples, and repaired inclusions."
+    }
+  ]
+}

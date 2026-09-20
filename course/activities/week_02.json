@@ -1,0 +1,12 @@
+{
+  "week": 2,
+  "title": "Week 2 conversations",
+  "items": [
+    {
+      "id": "w2_metrics",
+      "title": "Week 2 — Two metrics, one topology",
+      "statement": "Compare the metrics $d(x,y)=|x-y|$ and $\\rho(x,y)=\\min\\{|x-y|,1\\}$ on $\\mathbb R$. Work with Topology Peer to determine whether they give the same topology and to understand why topology can be more important than the particular metric used to describe it.",
+      "initial_prompt": "Begin by asking the student to compare small open balls for d(x,y)=|x-y| and rho(x,y)=min(|x-y|,1), with a mathematically meaningful question that can start revealing whether the metrics generate the same open sets. Do not simply state that the topologies are the same."
+    }
+  ]
+}

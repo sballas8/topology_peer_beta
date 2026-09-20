@@ -1,0 +1,14 @@
+{
+  "week": 5,
+  "title": "Week 5 conversations",
+  "items": [
+    {
+      "id": "w5_topology_continuity",
+      "title": "Week 5 \u2014 Topology and continuity",
+      "statement": "Let $f:X\\to Y$ be a function. Explore with Topology Peer how making the topology on $X$ finer or coarser affects continuity of $f$, and how making the topology on $Y$ finer or coarser affects continuity. Then investigate the extremal questions: if the topology on $Y$ is fixed, how coarse can the topology on $X$ be while keeping $f$ continuous? If the topology on $X$ is fixed, how fine can the topology on $Y$ be while keeping $f$ continuous?",
+      "initial_prompt": "Begin with one fixed function f:X->Y and ask the student to reason about one concrete change of topology, such as making the domain finer, and what that does to continuity. Keep the discussion grounded in this one function and gradually move toward the extremal topology questions rather than introducing families of maps immediately.",
+      "tutor_instructions": "The main path is: understand how finer/coarser domain and codomain topologies affect continuity; investigate the coarsest domain topology making f continuous when Y is fixed; investigate the finest codomain topology making f continuous when X is fixed; and connect the latter, for a surjective map, with the quotient topology. Treat the two extremal questions one at a time. Before supplying either extremal construction, give the student a genuine opportunity to formulate it from the continuity condition. Adapt that opportunity to the student's demonstrated understanding: a strong student may discover the construction quickly; a typical student may first identify which sets are forced to be open; a struggling student may need the construction taught directly. If the student does not see it, teach it rather than repeatedly asking increasingly leading questions. Once an extremal collection has been identified, let the student do meaningful work checking that it is a topology and explaining its extremal property rather than bundling all of those conclusions into one tutor response. After the main destination is reached, if the student has moved through it readily and is reasoning strongly, an optional extension is to ask what the finest codomain topology looks like when f is not surjective. Give the student room to discover what happens on Y\\f(X), and, if appropriate, how Y decomposes into the quotient topology on f(X) together with a discrete complement. This extension is not required for the deliverable.",
+      "deliverable": "For a function $f:X\\to Y$, explain how changing the topology on the domain or codomain can make continuity easier or harder. Then explain how this leads to the coarsest topology on $X$, with $Y$ fixed, and the finest topology on $Y$, with $X$ fixed. Explain why the latter becomes the quotient topology when $f$ is surjective."
+    }
+  ]
+}

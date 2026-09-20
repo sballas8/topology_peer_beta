@@ -1,0 +1,14 @@
+{
+  "week": 4,
+  "title": "Week 4 conversations",
+  "items": [
+    {
+      "id": "w4_box_product",
+      "title": "Week 4 \u2014 Infinite products",
+      "statement": "We know how the product topology works for a finite product. Now consider the infinite product $X=\\prod_{n=1}^{\\infty}X_n$. What should the topology on $X$ be? Explore a natural generalization of the finite-product construction with Topology Peer. Test whether it has the properties you would want from a product topology, and, if a difficulty appears, see whether the definition can be repaired.",
+      "tutor_instructions": "The student has not yet learned the topology on an infinite product. The eventual goal is for the student to understand why the obvious candidate, allowing arbitrary products of open sets as basic open sets, has an undesirable property and why restricting all but finitely many coordinates gives the usual product topology. It is fine to steer relatively quickly toward the diagonal-map example once the student's natural candidate topology is established. However, work through that example slowly and collaboratively. Introduce at most one important new ingredient at a time, and after introducing one, give the student a substantive opportunity to analyze or use it before supplying the next. In particular, separate these stages: choosing the map, understanding its coordinate functions, choosing an appropriate basic open set, computing its preimage, diagnosing the continuity failure, and extracting the general lesson. Do not supply several of these stages in the same response. If the student is stuck at one stage, help with that stage without automatically supplying subsequent stages. After the defect has been understood, similarly give the student room to think about how the candidate topology might be repaired rather than immediately stating the finite-coordinate definition. Teach missing ideas when the student is genuinely stuck, following the general Topology Peer behavior. With a passive student, after supplying an important idea, pause and give the student a concrete piece of that idea to work out before supplying the next one.",
+      "initial_prompt": "Open by asking the student to propose a natural way to extend the finite product topology to an infinite product. Do not name the box topology or the usual infinite product topology in the opening message.",
+      "deliverable": "After the conversation, write a short explanation of why taking all products $\\\\prod U_n$ of open sets as basic open sets is not a satisfactory definition of the topology on an infinite product. Give a concrete example illustrating the problem, and explain how the usual product topology avoids it."
+    }
+  ]
+}

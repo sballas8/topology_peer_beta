@@ -1,0 +1,26 @@
+{
+  "id": "hw01",
+  "title": "Homework 1",
+  "available": true,
+  "week": 2,
+  "problems": [
+    {
+      "id": "p1",
+      "number": 1,
+      "title": "Constructing a topology",
+      "statement": "Let $X=\\{a,b,c,d\\}$. Construct a topology on $X$ in which $\\{a\\}$ and $\\{a,b\\}$ are open but $\\{b\\}$ is not open. Verify directly that your collection satisfies the topology axioms."
+    },
+    {
+      "id": "p2",
+      "number": 2,
+      "title": "Continuity two ways",
+      "statement": "Let $f:\\mathbb R\\to\\mathbb R$ be given by $f(x)=3x+2$. Prove that $f$ is continuous using the $\\varepsilon$-$\\delta$ definition. Then prove that $f$ is continuous by showing that inverse images of open sets are open. Explain how the two arguments are related."
+    },
+    {
+      "id": "p3",
+      "number": 3,
+      "title": "A smallest topology",
+      "statement": "Let $X=\\{a,b,c,d,e\\}$. Determine the smallest topology on $X$ containing $\\{a,b,c\\}$, $\\{b,c,d\\}$, and $\\{c,d,e\\}$. Justify your answer."
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "hw05",
+  "title": "Homework 5",
+  "available": true,
+  "week": 6,
+  "problems": [
+    {
+      "id": "p1",
+      "number": 1,
+      "title": "Interior and closure in the real line",
+      "statement": "In $\\mathbb R$ with the usual topology, determine the interior and closure of each of the following sets: $A=(0,1]\\cup\\{2\\}$, $B=\\mathbb Q$, and $C=\\{1/n:n\\in\\mathbb N\\}$. Justify your answers from the definitions."
+    },
+    {
+      "id": "p2",
+      "number": 2,
+      "title": "Dense subsets",
+      "statement": "A subset $A\\subseteq X$ is called dense if $\\overline A=X$. Prove that $A$ is dense in $X$ if and only if every nonempty open subset of $X$ intersects $A$. Use this characterization to show that $\\mathbb Q$ is dense in $\\mathbb R$."
+    },
+    {
+      "id": "p3",
+      "number": 3,
+      "title": "Closure in a subspace",
+      "statement": "Let $A\\subseteq Y\\subseteq X$, where $Y$ has the subspace topology. Write $\\overline A^{\\,X}$ for the closure of $A$ in $X$ and $\\overline A^{\\,Y}$ for its closure in $Y$. Prove that $\\overline A^{\\,Y}=Y\\cap\\overline A^{\\,X}$."
+    }
+  ]
+}

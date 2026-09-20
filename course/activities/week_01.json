@@ -1,0 +1,22 @@
+{
+  "week": 1,
+  "title": "Week 1 conversations",
+  "items": [
+    {
+      "id": "w1_topology_axioms",
+      "title": "Week 1 \u2014 Exploring the topology axioms",
+      "statement": "Explore with Topology Peer what the topology axioms say, why arbitrary unions and finite intersections appear, and how examples and nonexamples behave.",
+      "initial_prompt": "Begin the conversation with a concrete small collection of subsets of a finite set and ask the student to decide whether it is a topology or what the axioms force them to add. Use this to open a substantive exploration of why arbitrary unions and finite intersections appear. Do not begin by reciting all the axioms or giving a lecture.",
+      "tutor_instructions": "The central destination is for the student to understand why the topology axioms require arbitrary unions of open sets but only finite intersections. Use concrete examples and nonexamples to develop that asymmetry, and give the student room to articulate the existential nature of membership in a union versus the simultaneous conditions imposed by an intersection. Once the student can explain this distinction and has seen an example where an infinite intersection of open sets is not open, the conceptual goal has been reached. Do not continue into a separate extended lesson on closed sets, accumulation points, or other consequences merely because they are related. Transition to the deliverable.",
+      "deliverable": "Explain in your own words why topology requires arbitrary unions of open sets but only finite intersections. Include one example showing what can go wrong with an infinite intersection."
+    },
+    {
+      "id": "w1_preimages",
+      "title": "Week 1 \u2014 Why preimages rather than images?",
+      "statement": "Explore with Topology Peer why continuity is naturally formulated using inverse images of open sets rather than images of open sets.",
+      "initial_prompt": "Begin with a simple continuous function and an open set, and invite the student to compare what happens to inverse images and images of open sets. The goal is to motivate why continuity is formulated with inverse images. Do not announce the full explanation at the outset.",
+      "tutor_instructions": "The central destination is for the student to understand why inverse images, rather than images, are the natural operation in the topological definition of continuity. Develop two complementary reasons: the local/geometric idea that neighborhoods of f(x) pull back to neighborhoods of x, and the structural fact that inverse images preserve unions and intersections in exactly the way needed for topology. Begin concretely and give the student substantive opportunities to discover these points. In particular, after the student understands the inverse-image characterization of continuity, invite them to investigate how inverse images interact with unions and intersections before supplying the identities yourself. Images may be contrasted when useful, but do not keep extending the activity into composition or other related facts once the two central reasons are understood. Then transition to the deliverable.",
+      "deliverable": "Explain in your own words why inverse images, rather than images, are the natural operation in the definition of continuity. Include both a local or neighborhood-based reason and a structural reason involving unions and intersections."
+    }
+  ]
+}

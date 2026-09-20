@@ -1,0 +1,26 @@
+{
+  "id": "hw03",
+  "title": "Homework 3",
+  "available": true,
+  "week": 4,
+  "problems": [
+    {
+      "id": "p1",
+      "number": 1,
+      "title": "The subspace topology",
+      "statement": "Let $A\\subseteq X$. Prove that $\\{A\\cap U:U\\text{ is open in }X\\}$ is a topology on $A$. Explain why it is the coarsest topology on $A$ that makes the inclusion $i:A\\hookrightarrow X$ continuous."
+    },
+    {
+      "id": "p2",
+      "number": 2,
+      "title": "The universal property of a product",
+      "statement": "Let $f:Z\\to X\\times Y$. Prove that $f$ is continuous if and only if both coordinate maps $\\pi_X\\circ f:Z\\to X$ and $\\pi_Y\\circ f:Z\\to Y$ are continuous."
+    },
+    {
+      "id": "p3",
+      "number": 3,
+      "title": "Using the product topology",
+      "statement": "Let $f,g:Z\\to\\mathbb R$ be continuous. Prove that the map $z\\mapsto(f(z),g(z))$ from $Z$ to $\\mathbb R^2$ is continuous. Use this and appropriate continuous maps $\\mathbb R^2\\to\\mathbb R$ to deduce that $f+g$ and $fg$ are continuous."
+    }
+  ]
+}

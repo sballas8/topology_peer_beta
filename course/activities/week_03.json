@@ -1,0 +1,12 @@
+{
+  "week": 3,
+  "title": "Week 3 conversations",
+  "items": [
+    {
+      "id": "w3_rational_basis",
+      "title": "Week 3 — Rational endpoints",
+      "statement": "On $\\mathbb R$, compare the collection of all open intervals with the collection of open intervals having rational endpoints. Work with Topology Peer to determine whether the rational-endpoint intervals form a basis for the usual topology and to understand exactly why.",
+      "initial_prompt": "Begin by asking the student what would have to be true for rational-endpoint intervals to generate the usual topology, preferably by focusing on an arbitrary point inside an arbitrary open interval. Do not give the proof immediately."
+    }
+  ]
+}

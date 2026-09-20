@@ -1,0 +1,56 @@
+{
+  "title": "Assessment plan through Week 6",
+  "note": "Completed in class without AI.",
+  "items": [
+    {
+      "id": "practice_week_2",
+      "week": 2,
+      "title": "Week 2 practice assessment",
+      "graded": false,
+      "prompts": [
+        "Given specified sets, use unions and intersections to determine what the topology axioms force to be open.",
+        "Use inverse images of open sets to justify continuity of $f(x)=2x$."
+      ]
+    },
+    {
+      "id": "graded_week_3",
+      "week": 3,
+      "title": "Week 3 assessment",
+      "graded": true,
+      "prompts": [
+        "Show that $f^{-1}(U\\cap V)=f^{-1}(U)\\cap f^{-1}(V)$ and explain how this is used in reasoning about continuity.",
+        "Do intervals with integer endpoints form a basis for the usual topology on $\\mathbb R$? Justify your answer."
+      ]
+    },
+    {
+      "id": "graded_week_4",
+      "week": 4,
+      "title": "Week 4 assessment",
+      "graded": true,
+      "prompts": [
+        "Let $X$ be a topological space. State what it means for a collection $\\mathcal B$ of open subsets of $X$ to be a basis for the topology on $X$.",
+        "Let $\\mathcal B$ be a basis for $X$, and let $A\\subseteq X$ have the subspace topology. Prove that $\\mathcal B_A=\\{B\\cap A:B\\in\\mathcal B\\}$ is a basis for the subspace topology on $A$."
+      ]
+    },
+    {
+      "id": "graded_week_5",
+      "week": 5,
+      "title": "Week 5 assessment",
+      "graded": true,
+      "prompts": [
+        "Let $q:X\\to Y$ be a surjective map, where $X$ is a topological space. State the definition of the quotient topology on $Y$.",
+        "Let $q:X\\to Y$ be a quotient map and $g:Y\\to Z$ a function. Suppose $g\\circ q:X\\to Z$ is continuous. Prove that $g$ is continuous."
+      ]
+    },
+    {
+      "id": "graded_week_6",
+      "week": 6,
+      "title": "Week 6 assessment",
+      "graded": true,
+      "prompts": [
+        "Let $A\\subseteq X$. Define the closure $\\overline A$ and state what $x\\in\\overline A$ means in terms of neighborhoods of $x$.",
+        "Let $f:X\\to Y$ be continuous and let $A\\subseteq X$. Prove that $f(\\overline A)\\subseteq\\overline{f(A)}$. In words: the image of the closure of $A$ is contained in the closure of the image of $A$."
+      ]
+    }
+  ]
+}

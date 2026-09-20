@@ -1,0 +1,26 @@
+{
+  "id": "hw04",
+  "title": "Homework 4",
+  "available": true,
+  "week": 5,
+  "problems": [
+    {
+      "id": "p1",
+      "number": 1,
+      "title": "Working directly with a quotient",
+      "statement": "Let $X=[0,2]$, and let $Y$ be obtained by identifying $0\\sim2$. Let $q:X\\to Y$ be the quotient map. For several subsets of $Y$ specified in class, determine whether they are open by examining their inverse images under $q$."
+    },
+    {
+      "id": "p2",
+      "number": 2,
+      "title": "Maps out of a quotient",
+      "statement": "Let $q:[0,1]\\to[0,1]/(0\\sim1)$ be the quotient map. Suppose $F:[0,1]\\to\\mathbb R$ is continuous and $F(0)=F(1)$. Prove that there is a unique continuous function $\\overline F:[0,1]/(0\\sim1)\\to\\mathbb R$ such that $F=\\overline F\\circ q$."
+    },
+    {
+      "id": "p3",
+      "number": 3,
+      "title": "A geometric quotient",
+      "statement": "Define $f:[0,1]\\to S^1$ by $f(t)=(\\cos(2\\pi t),\\sin(2\\pi t))$. Show that $f$ induces a continuous bijection $\\overline f:[0,1]/(0\\sim1)\\to S^1$."
+    }
+  ]
+}
