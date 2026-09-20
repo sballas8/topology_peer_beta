@@ -81,58 +81,61 @@ st.markdown("""
 <style>
 :root {
     --fsu-garnet: #782F40;
+    --fsu-garnet-dark: #4F1F2A;
     --fsu-gold: #CEB888;
-    --fsu-pale-gold: #F3EDE1;
-    --fsu-ink: #2F2A2B;
+    --fsu-pale-gold: #F5F0E7;
+    --fsu-paper: #FCFAF6;
+    --fsu-ink: #2F292B;
+    --fsu-muted: #6D6467;
 }
 
-/* Overall page */
+/* Warm paper-like page rather than a completely white application shell */
 .stApp {
-    background: #FFFFFF;
+    background:
+        linear-gradient(180deg, #F7F2E9 0px, #FCFAF6 150px, #FFFFFF 430px);
     color: var(--fsu-ink);
 }
 
-/* A restrained FSU accent bar */
+/* Stronger university-color band, still intentionally narrow */
 .stApp::before {
     content: "";
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6px;
-    background: var(--fsu-garnet);
+    top: 0; left: 0; right: 0;
+    height: 9px;
+    background: linear-gradient(90deg,
+        var(--fsu-garnet) 0%,
+        var(--fsu-garnet) 82%,
+        var(--fsu-gold) 82%,
+        var(--fsu-gold) 100%);
     z-index: 999999;
 }
 
-/* Main title and headings */
+.block-container {
+    padding-top: 2.5rem;
+    padding-bottom: 3rem;
+    max-width: 1500px;
+}
+
+/* Typography */
 h1, h2, h3 {
     color: var(--fsu-garnet);
+    letter-spacing: -0.015em;
 }
 h4, h5, h6 {
-    color: #5B2430;
+    color: var(--fsu-garnet-dark);
 }
 
-/* Primary buttons */
-.stButton > button[kind="primary"] {
-    background-color: var(--fsu-garnet);
-    border-color: var(--fsu-garnet);
-    color: white;
-}
-.stButton > button[kind="primary"]:hover {
-    background-color: #642735;
-    border-color: #642735;
+/* The left control column reads as a coherent course panel */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    border-color: #DDD2C1;
 }
 
-/* Regular buttons: understated garnet outline */
-.stButton > button:not([kind="primary"]) {
-    border-color: #B08A94;
+/* Selects and text fields */
+div[data-baseweb="select"] > div,
+div[data-baseweb="input"] > div,
+textarea {
+    border-radius: 7px !important;
 }
-.stButton > button:not([kind="primary"]):hover {
-    border-color: var(--fsu-garnet);
-    color: var(--fsu-garnet);
-}
-
-/* Inputs and selectors */
 div[data-baseweb="select"] > div:focus-within,
 div[data-baseweb="input"]:focus-within,
 textarea:focus {
@@ -140,24 +143,66 @@ textarea:focus {
     box-shadow: 0 0 0 1px var(--fsu-garnet) !important;
 }
 
-/* Expanders and left-side content get a light academic-paper feel */
+/* Buttons */
+.stButton > button[kind="primary"] {
+    background-color: var(--fsu-garnet);
+    border-color: var(--fsu-garnet);
+    color: white;
+    font-weight: 600;
+}
+.stButton > button[kind="primary"]:hover {
+    background-color: var(--fsu-garnet-dark);
+    border-color: var(--fsu-garnet-dark);
+}
+.stButton > button:not([kind="primary"]) {
+    border: 1px solid #BCA9AE;
+    border-radius: 7px;
+}
+.stButton > button:not([kind="primary"]):hover {
+    border-color: var(--fsu-garnet);
+    color: var(--fsu-garnet);
+}
+
+/* Problem / activity material gets a warmer course-handout feel */
 div[data-testid="stExpander"] {
-    border-color: #D9CCB6;
-    border-radius: 8px;
+    background: rgba(255,255,255,.68);
+    border: 1px solid #DDD0BC;
+    border-radius: 9px;
+}
+div[data-testid="stExpander"] summary:hover {
+    color: var(--fsu-garnet);
 }
 
-/* Chat messages: keep conversation readable, with subtle role separation */
+/* Dialogue pane */
 div[data-testid="stChatMessage"] {
-    border-radius: 10px;
-    border: 1px solid #E6E0D7;
-}
-div[data-testid="stChatMessage"]:nth-of-type(even) {
-    background: #FBF8F2;
+    border-radius: 12px;
+    border: 1px solid #E3DCD2;
+    padding-top: .35rem;
+    padding-bottom: .35rem;
+    box-shadow: 0 1px 2px rgba(55,35,40,.035);
 }
 
-/* Chat input */
+/* Assistant turns feel like the tutor; user turns stay neutral */
+div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
+    background: var(--fsu-pale-gold);
+    border-left: 4px solid var(--fsu-garnet);
+}
+div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+    background: #FFFFFF;
+    border-left: 4px solid var(--fsu-gold);
+}
+
+/* Chat input anchors the dialogue in the palette */
 div[data-testid="stChatInput"] {
-    border-top: 2px solid var(--fsu-gold);
+    border: 1px solid #D7C8B1;
+    border-top: 3px solid var(--fsu-garnet);
+    border-radius: 10px;
+    background: #FFFFFF;
+}
+
+/* Settings button */
+button[aria-label*="Settings"] {
+    color: var(--fsu-garnet);
 }
 
 /* Sliders */
@@ -168,18 +213,17 @@ div[data-testid="stSlider"] [role="slider"] {
 /* Links */
 a {
     color: var(--fsu-garnet);
+    text-decoration-color: var(--fsu-gold);
 }
 
-/* Captions stay quiet rather than school-colored */
+/* Captions */
 .stCaption, [data-testid="stCaptionContainer"] {
-    color: #686064;
+    color: var(--fsu-muted);
 }
 
-/* Give the page a little more breathing room */
-.block-container {
-    padding-top: 2.6rem;
-    padding-bottom: 3rem;
-    max-width: 1500px;
+/* Gentle divider treatment */
+hr {
+    border-color: #D9C8AD;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -445,13 +489,33 @@ def launch_activity_if_needed(cid):
 # ---------- Main beta UI ----------
 st.markdown(
     f"""
-    <div style="border-bottom: 3px solid #CEB888; padding: 0.15rem 0 0.8rem 0; margin-bottom: 1.2rem;">
-        <div style="font-size: 2.15rem; font-weight: 700; color: #782F40; line-height: 1.15;">
+    <div style="
+        background: linear-gradient(105deg, #782F40 0%, #672736 72%, #54202C 100%);
+        border-bottom: 5px solid #CEB888;
+        border-radius: 10px;
+        padding: 1.15rem 1.4rem 1.05rem 1.4rem;
+        margin: 0 0 1.25rem 0;
+        box-shadow: 0 3px 10px rgba(70,30,40,.10);
+    ">
+        <div style="
+            font-size: 2.25rem;
+            font-weight: 720;
+            color: white;
+            line-height: 1.08;
+            letter-spacing: -0.025em;
+        ">
             {course['peer_name']}
         </div>
-        <div style="font-size: 0.98rem; color: #554D50; margin-top: 0.25rem;">
-            Undergraduate Topology · Florida State University
-            <span style="color: #8A7D81;"> · Beta</span>
+        <div style="
+            font-size: 1rem;
+            color: #F1E5D2;
+            margin-top: 0.42rem;
+            letter-spacing: 0.01em;
+        ">
+            Undergraduate Topology
+            <span style="color:#CEB888; padding:0 .45rem;">◆</span>
+            Florida State University
+            <span style="opacity:.78;"> · Beta</span>
         </div>
     </div>
     """,
@@ -473,16 +537,16 @@ with left:
         question_options = {f"Question {p['number']}: {p.get('title','')}": p for p in selected_hw["problems"]}
         question_name = st.selectbox("Question", list(question_options))
         selected_problem = question_options[question_name]
-        st.markdown("#### Question")
+        st.markdown("<div style=\"border-left:4px solid #782F40; padding-left:.65rem; margin-top:1rem;\"><strong style=\"color:#782F40;\">Question</strong></div>", unsafe_allow_html=True)
         st.markdown(selected_problem["statement"])
     elif mode == "Conversations":
         conversation_options = {a["title"]: a for a in activities}
         conversation_name = st.selectbox("Conversation", list(conversation_options))
         selected_activity = conversation_options[conversation_name]
-        st.markdown("#### Conversation prompt")
+        st.markdown("<div style=\"border-left:4px solid #782F40; padding-left:.65rem; margin-top:1rem;\"><strong style=\"color:#782F40;\">Conversation prompt</strong></div>", unsafe_allow_html=True)
         st.markdown(selected_activity["statement"])
         if selected_activity.get("deliverable"):
-            st.markdown("#### Deliverable")
+            st.markdown("<div style=\"border-left:4px solid #CEB888; padding-left:.65rem; margin-top:1rem;\"><strong style=\"color:#5B2430;\">Deliverable</strong></div>", unsafe_allow_html=True)
             st.markdown(selected_activity["deliverable"])
     else:
         st.caption("Start a discussion about anything from the course.")
