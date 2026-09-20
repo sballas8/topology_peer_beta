@@ -298,6 +298,15 @@ def call_tutor(*, cid, instructions, input_value, request_kind):
             max_output_tokens=MAX_OUTPUT_TOKENS,
         )
     except Exception as exc:
+        # Keep the student-facing message generic, but log the real exception for diagnosis.
+        import traceback
+        print(
+            f"TOPOLOGY_PEER_OPENAI_ERROR kind={request_kind} "
+            f"type={type(exc).__name__} code={openai_error_code(exc)} "
+            f"message={exc!s}",
+            flush=True,
+        )
+        traceback.print_exc()
         if openai_error_code(exc):
             return None, (
                 "Topology Peer is temporarily unavailable because the beta's API usage allowance "
