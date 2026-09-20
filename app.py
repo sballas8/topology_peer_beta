@@ -77,6 +77,113 @@ initialize_db()
 
 st.set_page_config(page_title=f"{course['peer_name']} Beta", layout="wide")
 
+st.markdown("""
+<style>
+:root {
+    --fsu-garnet: #782F40;
+    --fsu-gold: #CEB888;
+    --fsu-pale-gold: #F3EDE1;
+    --fsu-ink: #2F2A2B;
+}
+
+/* Overall page */
+.stApp {
+    background: #FFFFFF;
+    color: var(--fsu-ink);
+}
+
+/* A restrained FSU accent bar */
+.stApp::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: var(--fsu-garnet);
+    z-index: 999999;
+}
+
+/* Main title and headings */
+h1, h2, h3 {
+    color: var(--fsu-garnet);
+}
+h4, h5, h6 {
+    color: #5B2430;
+}
+
+/* Primary buttons */
+.stButton > button[kind="primary"] {
+    background-color: var(--fsu-garnet);
+    border-color: var(--fsu-garnet);
+    color: white;
+}
+.stButton > button[kind="primary"]:hover {
+    background-color: #642735;
+    border-color: #642735;
+}
+
+/* Regular buttons: understated garnet outline */
+.stButton > button:not([kind="primary"]) {
+    border-color: #B08A94;
+}
+.stButton > button:not([kind="primary"]):hover {
+    border-color: var(--fsu-garnet);
+    color: var(--fsu-garnet);
+}
+
+/* Inputs and selectors */
+div[data-baseweb="select"] > div:focus-within,
+div[data-baseweb="input"]:focus-within,
+textarea:focus {
+    border-color: var(--fsu-garnet) !important;
+    box-shadow: 0 0 0 1px var(--fsu-garnet) !important;
+}
+
+/* Expanders and left-side content get a light academic-paper feel */
+div[data-testid="stExpander"] {
+    border-color: #D9CCB6;
+    border-radius: 8px;
+}
+
+/* Chat messages: keep conversation readable, with subtle role separation */
+div[data-testid="stChatMessage"] {
+    border-radius: 10px;
+    border: 1px solid #E6E0D7;
+}
+div[data-testid="stChatMessage"]:nth-of-type(even) {
+    background: #FBF8F2;
+}
+
+/* Chat input */
+div[data-testid="stChatInput"] {
+    border-top: 2px solid var(--fsu-gold);
+}
+
+/* Sliders */
+div[data-testid="stSlider"] [role="slider"] {
+    background-color: var(--fsu-garnet);
+}
+
+/* Links */
+a {
+    color: var(--fsu-garnet);
+}
+
+/* Captions stay quiet rather than school-colored */
+.stCaption, [data-testid="stCaptionContainer"] {
+    color: #686064;
+}
+
+/* Give the page a little more breathing room */
+.block-container {
+    padding-top: 2.6rem;
+    padding-bottom: 3rem;
+    max-width: 1500px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ---------- Closed-beta identity ----------
 # Testers receive random codes (e.g. T7K4Q2). No name/email is requested or stored.
 if "student_id" not in st.session_state:
@@ -336,7 +443,20 @@ def launch_activity_if_needed(cid):
     return error
 
 # ---------- Main beta UI ----------
-st.title(f"{course['peer_name']} — Beta")
+st.markdown(
+    f"""
+    <div style="border-bottom: 3px solid #CEB888; padding: 0.15rem 0 0.8rem 0; margin-bottom: 1.2rem;">
+        <div style="font-size: 2.15rem; font-weight: 700; color: #782F40; line-height: 1.15;">
+            {course['peer_name']}
+        </div>
+        <div style="font-size: 0.98rem; color: #554D50; margin-top: 0.25rem;">
+            Undergraduate Topology · Florida State University
+            <span style="color: #8A7D81;"> · Beta</span>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 st.caption("Private usability test • Your conversations are saved under a pseudonymous tester code.")
 
 left, right = st.columns([1, 3], gap="large")
