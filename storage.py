@@ -219,6 +219,16 @@ class SQLiteStorage:
         created_at,
     ):
         with self._connect() as connection:
+            if conversation_id is not None:
+                owner = connection.execute(
+                    """SELECT 1 FROM conversations
+                       WHERE conversation_id=? AND student_id=?""",
+                    (conversation_id, student_id),
+                ).fetchone()
+                if owner is None:
+                    raise PermissionError(
+                        "Conversation does not belong to the active student."
+                    )
             connection.execute(
                 """INSERT INTO usage_events
                    (usage_id,student_id,conversation_id,request_kind,model_name,
@@ -253,6 +263,16 @@ class SQLiteStorage:
         created_at,
     ):
         with self._connect() as connection:
+            if conversation_id is not None:
+                owner = connection.execute(
+                    """SELECT 1 FROM conversations
+                       WHERE conversation_id=? AND student_id=?""",
+                    (conversation_id, student_id),
+                ).fetchone()
+                if owner is None:
+                    raise PermissionError(
+                        "Conversation does not belong to the active student."
+                    )
             connection.execute(
                 """INSERT INTO feedback
                    (feedback_id,student_id,conversation_id,helpfulness,frustration,
