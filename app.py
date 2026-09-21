@@ -448,6 +448,9 @@ def call_tutor(*, cid, instructions, input_value, request_kind):
             instructions=instructions,
             input=input_value,
             max_output_tokens=MAX_OUTPUT_TOKENS,
+            # Conversation history is stored only in the course database.
+            # Do not create persistent application state in the OpenAI API.
+            store=False,
         )
     except Exception as exc:
         # Keep the student-facing message generic, but log the real exception for diagnosis.
