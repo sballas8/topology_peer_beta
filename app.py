@@ -35,6 +35,7 @@ MAX_CONVERSATION_STUDENT_MESSAGES = setting("MAX_CONVERSATION_STUDENT_MESSAGES",
 MAX_CALLS_PER_MINUTE = setting("MAX_CALLS_PER_MINUTE", 8, int)
 MAX_STUDENT_MESSAGE_CHARS = setting("MAX_STUDENT_MESSAGE_CHARS", 8000, int)
 MAX_CONVERSATION_CHARS = setting("MAX_CONVERSATION_CHARS", 60000, int)
+OPENAI_TIMEOUT_SECONDS = setting("OPENAI_TIMEOUT_SECONDS", 45.0, float)
 BETA_BUDGET_USD = setting("BETA_BUDGET_USD", 25.0, float)
 # Current regular GPT-5.6 Sol promotional rates; configurable so pricing changes do not
 # require an application edit.
@@ -49,7 +50,7 @@ api_key = setting("OPENAI_API_KEY")
 if not api_key:
     st.error("The beta server is missing its OpenAI API key.")
     st.stop()
-client = OpenAI(api_key=api_key)
+client = OpenAI(api_key=api_key, timeout=OPENAI_TIMEOUT_SECONDS)
 
 def now():
     return datetime.now(timezone.utc).isoformat()
@@ -518,6 +519,44 @@ def call_tutor(*, cid, instructions, input_value, request_kind):
     record_usage(response, cid, request_kind)
     return response.output_text, None
 
+def submit_student_message(cid, conv, user_text):
+    """Validate, send, and persist one student turn without leaving partial state."""
+    limit_ok, limit_message = check_usage_limits(cid)
+    if not limit_ok:
+        return False, limit_message
+    size_ok, size_message = check_message_size(cid, user_text)
+    if not size_ok:
+        return False, size_message
+
+    save_message(cid, "student", user_text)
+    messages = load_messages(cid)
+    api_messages = [
+        {
+            "role": "user" if message["role"] == "student" else "assistant",
+            "content": message["content"],
+        }
+        for message in messages
+    ]
+    with st.spinner(f"{APP_NAME} is thinking..."):
+        answer, error = call_tutor(
+            cid=cid,
+            instructions=instructions_for(conv),
+            input_value=api_messages,
+            request_kind="dialogue",
+        )
+    if answer:
+        save_message(cid, "assistant", answer)
+        st.session_state.pop("beta_failed_message", None)
+        st.session_state.pop("beta_failed_conversation", None)
+        return True, None
+
+    # Anna did not process this turn successfully. Remove it from the permanent
+    # transcript but retain a session-only copy so the student can retry.
+    delete_last_student_message(cid)
+    st.session_state["beta_failed_message"] = user_text
+    st.session_state["beta_failed_conversation"] = cid
+    return False, error or f"{APP_NAME} could not complete that request."
+
 def launch_activity_if_needed(cid):
     conv = get_conversation(cid)
     if not conv or conv["workspace"] != "activity" or load_messages(cid):
@@ -694,36 +733,34 @@ with right:
             with st.chat_message("user" if m["role"] == "student" else "assistant"):
                 st.markdown(m["content"])
 
+        failed_message = (
+            st.session_state.get("beta_failed_message")
+            if st.session_state.get("beta_failed_conversation") == cid
+            else None
+        )
+        if failed_message:
+            st.warning("Your last message was not sent. You can retry it without retyping it.")
+            with st.expander("Show unsent message"):
+                st.markdown(failed_message)
+            retry_col, discard_col = st.columns(2)
+            if retry_col.button("Retry last message", use_container_width=True):
+                sent, error = submit_student_message(cid, conv, failed_message)
+                if error:
+                    st.session_state["beta_last_error"] = error
+                st.rerun()
+            if discard_col.button("Discard unsent message", use_container_width=True):
+                st.session_state.pop("beta_failed_message", None)
+                st.session_state.pop("beta_failed_conversation", None)
+                st.rerun()
+
         limit_ok, limit_message = check_usage_limits(cid)
         if not limit_ok:
             st.warning(limit_message)
         user_text = st.chat_input(f"Message {APP_NAME}", disabled=not limit_ok)
         if user_text:
-            # Check again immediately before spending tokens. Save only if the request can run.
-            limit_ok, limit_message = check_usage_limits(cid)
-            if not limit_ok:
-                st.warning(limit_message)
-            else:
-                size_ok, size_message = check_message_size(cid, user_text)
-                if not size_ok:
-                    st.warning(size_message)
-                else:
-                    save_message(cid, "student", user_text)
-                    messages = load_messages(cid)
-                    api_messages = [{"role": "user" if m["role"] == "student" else "assistant", "content": m["content"]} for m in messages]
-                    with st.spinner(f"{APP_NAME} is thinking..."):
-                        answer, error = call_tutor(
-                            cid=cid, instructions=instructions_for(conv), input_value=api_messages, request_kind="dialogue"
-                        )
-                    if answer:
-                        save_message(cid, "assistant", answer)
-                    else:
-                        # Anna never processed this turn successfully. Remove it so the student
-                        # can retry after a billing/quota/network problem without corrupting context.
-                        delete_last_student_message(cid)
-                        if error:
-                            st.warning(error)
-                        st.session_state["beta_last_error"] = error or f"{APP_NAME} could not complete that request."
-                    st.rerun()
+            sent, error = submit_student_message(cid, conv, user_text)
+            if error:
+                st.session_state["beta_last_error"] = error
+            st.rerun()
     else:
         st.info("Choose a homework problem, open a saved conversation, or start a freeform discussion.")
