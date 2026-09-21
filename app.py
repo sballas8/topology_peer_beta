@@ -27,6 +27,7 @@ def setting(name, default=None, cast=str):
     return cast(value)
 
 MODEL = setting("TOPOLOGY_PEER_MODEL", "gpt-5.6")
+APP_NAME = "Topology AI Tutor"
 MAX_OUTPUT_TOKENS = setting("MAX_OUTPUT_TOKENS", 1000, int)
 MAX_DAILY_CALLS = setting("MAX_DAILY_CALLS", 50, int)
 MAX_CONVERSATION_STUDENT_MESSAGES = setting("MAX_CONVERSATION_STUDENT_MESSAGES", 30, int)
@@ -75,7 +76,7 @@ def initialize_db():
 
 initialize_db()
 
-st.set_page_config(page_title=f"Anna Beta", layout="wide")
+st.set_page_config(page_title=f"{APP_NAME} Beta", layout="wide")
 
 st.markdown("""
 <style>
@@ -231,7 +232,7 @@ hr {
 # ---------- Closed-beta identity ----------
 # Testers receive random codes (e.g. T7K4Q2). No name/email is requested or stored.
 if "student_id" not in st.session_state:
-    st.title("Anna — Beta")
+    st.title(f"{APP_NAME} — Beta")
     st.caption("Private usability test • Undergraduate Topology")
     if not ALLOWED_TESTER_CODES:
         st.error("No beta tester codes are configured on this deployment.")
@@ -460,11 +461,11 @@ def call_tutor(*, cid, instructions, input_value, request_kind):
         traceback.print_exc()
         if openai_error_code(exc):
             return None, (
-                "Anna is temporarily unavailable because the beta's API usage allowance "
+                f"{APP_NAME} is temporarily unavailable because the beta's API usage allowance "
                 "has been exhausted. Your conversation is saved; please try again after the "
                 "instructor restores the allowance."
             )
-        return None, "Anna could not complete that request. Please try again."
+        return None, f"{APP_NAME} could not complete that request. Please try again."
     record_usage(response, cid, request_kind)
     return response.output_text, None
 
@@ -504,7 +505,7 @@ st.markdown(
             line-height: 1.08;
             letter-spacing: -0.025em;
         ">
-            {course['peer_name']}
+            {APP_NAME}
         </div>
         <div style="
             font-size: 1rem;
@@ -551,7 +552,7 @@ with left:
     else:
         st.caption("Start a discussion about anything from the course.")
 
-    with st.expander("How to use Anna"):
+    with st.expander("How to use the tutor"):
         st.write("Use it naturally, as you would if you were taking the course. For assigned work, you are responsible for writing the final proof or exposition yourself. This is a beta: please report moments that feel especially helpful, frustrating, too easy, or overly guided.")
 
     with st.expander("Beta feedback"):
@@ -630,7 +631,7 @@ with right:
         limit_ok, limit_message = check_usage_limits(cid)
         if not limit_ok:
             st.warning(limit_message)
-        user_text = st.chat_input("Message Anna", disabled=not limit_ok)
+        user_text = st.chat_input(f"Message {APP_NAME}", disabled=not limit_ok)
         if user_text:
             # Check again immediately before spending tokens. Save only if the request can run.
             limit_ok, limit_message = check_usage_limits(cid)
@@ -640,7 +641,7 @@ with right:
                 save_message(cid, "student", user_text)
                 messages = load_messages(cid)
                 api_messages = [{"role": "user" if m["role"] == "student" else "assistant", "content": m["content"]} for m in messages]
-                with st.spinner("Anna is thinking..."):
+                with st.spinner(f"{APP_NAME} is thinking..."):
                     answer, error = call_tutor(
                         cid=cid, instructions=instructions_for(conv), input_value=api_messages, request_kind="dialogue"
                     )
@@ -652,7 +653,7 @@ with right:
                     delete_last_student_message(cid)
                     if error:
                         st.warning(error)
-                    st.session_state["beta_last_error"] = error or "Anna could not complete that request."
+                    st.session_state["beta_last_error"] = error or f"{APP_NAME} could not complete that request."
                 st.rerun()
     else:
         st.info("Choose a homework problem, open a saved conversation, or start a freeform discussion.")
