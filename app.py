@@ -27,7 +27,7 @@ def setting(name, default=None, cast=str):
     return cast(value)
 
 MODEL = setting("TOPOLOGY_PEER_MODEL", "gpt-5.6")
-APP_NAME = "Topology AI Tutor"
+APP_NAME = "Anna"
 MAX_OUTPUT_TOKENS = setting("MAX_OUTPUT_TOKENS", 1000, int)
 MAX_DAILY_CALLS = setting("MAX_DAILY_CALLS", 50, int)
 MAX_CONVERSATION_STUDENT_MESSAGES = setting("MAX_CONVERSATION_STUDENT_MESSAGES", 30, int)
@@ -183,7 +183,7 @@ div[data-testid="stChatMessage"] {
     box-shadow: 0 1px 2px rgba(55,35,40,.035);
 }
 
-/* Assistant turns feel like the tutor; user turns stay neutral */
+/* Assistant turns feel like Anna; user turns stay neutral */
 div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
     background: var(--fsu-pale-gold);
     border-left: 4px solid var(--fsu-garnet);
@@ -552,12 +552,12 @@ with left:
     else:
         st.caption("Start a discussion about anything from the course.")
 
-    with st.expander("How to use the tutor"):
-        st.write("Use it naturally, as you would if you were taking the course. For assigned work, you are responsible for writing the final proof or exposition yourself. This is a beta: please report moments that feel especially helpful, frustrating, too easy, or overly guided.")
+    with st.expander("How to use Anna"):
+        st.write("Use Anna naturally, as you would use office hours for the course. For assigned work, you are responsible for writing the final proof or exposition yourself. This is a beta: please report moments that feel especially helpful, frustrating, too easy, or overly guided.")
 
     with st.expander("Beta feedback"):
         st.caption("Feedback is linked only to your pseudonymous tester code.")
-        helpfulness = st.slider("How helpful was the tutor?", 1, 5, 3)
+        helpfulness = st.slider("How helpful was Anna?", 1, 5, 3)
         frustration = st.slider("How frustrating was the interaction?", 1, 5, 1)
         too_much = st.slider("How often did it give too much away?", 1, 5, 1)
         unnecessary = st.slider("How often did it make you do unnecessary work after you understood?", 1, 5, 1)
@@ -648,7 +648,7 @@ with right:
                 if answer:
                     save_message(cid, "assistant", answer)
                 else:
-                    # The tutor never processed this turn successfully. Remove it so the student
+                    # Anna never processed this turn successfully. Remove it so the student
                     # can retry after a billing/quota/network problem without corrupting context.
                     delete_last_student_message(cid)
                     if error:
