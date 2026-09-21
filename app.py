@@ -1,10 +1,11 @@
 from pathlib import Path
-import json, os, re, sqlite3, time, uuid
+import json, os, re, time, uuid
 from datetime import datetime, timezone, timedelta
 
 import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
+from storage import SQLiteStorage
 
 ROOT = Path(__file__).resolve().parent
 COURSE = ROOT / "course"
@@ -61,20 +62,8 @@ homeworks = [h for h in homeworks if h.get("available", True)]
 activity_files = [load_json(p) for p in sorted((COURSE / "activities").glob("*.json"))]
 activities = [item for week in activity_files for item in week.get("items", [])]
 
-def db():
-    DB.parent.mkdir(parents=True, exist_ok=True)
-    c = sqlite3.connect(DB, timeout=30)
-    c.row_factory = sqlite3.Row
-    c.execute("PRAGMA foreign_keys = ON")
-    return c
-
-def initialize_db():
-    with db() as c:
-        c.executescript(SCHEMA.read_text(encoding="utf-8"))
-        c.execute("INSERT OR IGNORE INTO tutor_versions(tutor_version,prompt_text,model_name,created_at) VALUES (?,?,?,?)",
-                  (course["tutor_version"], tutor_prompt, MODEL, now()))
-
-initialize_db()
+storage = SQLiteStorage(DB, SCHEMA)
+storage.initialize(course["tutor_version"], tutor_prompt, MODEL, now())
 
 st.set_page_config(page_title=f"{APP_NAME} Beta", layout="wide")
 
@@ -249,26 +238,28 @@ if "student_id" not in st.session_state:
     st.stop()
 
 def ensure_student():
-    with db() as c:
-        c.execute("INSERT OR IGNORE INTO students(student_id,created_at) VALUES (?,?)",
-                  (st.session_state.student_id, now()))
+    storage.ensure_student(st.session_state.student_id, now())
 
 ensure_student()
 
 def create_conversation(workspace, title, homework_id=None, problem_id=None, activity_id=None):
     cid = "conv_" + uuid.uuid4().hex
     t = now()
-    with db() as c:
-        c.execute("""INSERT INTO conversations
-            (conversation_id,student_id,title,workspace,homework_id,problem_id,activity_id,tutor_version,created_at,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (cid, st.session_state.student_id, title, workspace, homework_id, problem_id, activity_id,
-             course["tutor_version"], t, t))
+    storage.create_conversation(
+        conversation_id=cid,
+        student_id=st.session_state.student_id,
+        title=title,
+        workspace=workspace,
+        homework_id=homework_id,
+        problem_id=problem_id,
+        activity_id=activity_id,
+        tutor_version=course["tutor_version"],
+        created_at=t,
+    )
     return cid
 
 def load_messages(cid):
-    with db() as c:
-        return c.execute("SELECT * FROM messages WHERE conversation_id=? ORDER BY sequence_number", (cid,)).fetchall()
+    return storage.load_messages(cid, st.session_state.student_id)
 
 def display_timestamp(value):
     if not value:
@@ -320,17 +311,17 @@ def render_transcript(conv, messages):
 def get_conversation(cid):
     if not cid:
         return None
-    with db() as c:
-        return c.execute("SELECT * FROM conversations WHERE conversation_id=? AND student_id=?",
-                         (cid, st.session_state.student_id)).fetchone()
+    return storage.get_conversation(cid, st.session_state.student_id)
 
 def save_message(cid, role, content):
-    with db() as c:
-        n = c.execute("SELECT COALESCE(MAX(sequence_number),0)+1 FROM messages WHERE conversation_id=?",
-                      (cid,)).fetchone()[0]
-        c.execute("INSERT INTO messages(message_id,conversation_id,sequence_number,role,content,created_at) VALUES (?,?,?,?,?,?)",
-                  ("msg_" + uuid.uuid4().hex, cid, n, role, content, now()))
-        c.execute("UPDATE conversations SET updated_at=? WHERE conversation_id=?", (now(), cid))
+    storage.save_message(
+        message_id="msg_" + uuid.uuid4().hex,
+        conversation_id=cid,
+        student_id=st.session_state.student_id,
+        role=role,
+        content=content,
+        created_at=now(),
+    )
 
 
 def delete_last_student_message(cid):
@@ -339,14 +330,7 @@ def delete_last_student_message(cid):
     This keeps a failed billing/network request from becoming part of future tutor context.
     The student's earlier conversation remains untouched.
     """
-    with db() as c:
-        row = c.execute(
-            "SELECT message_id FROM messages WHERE conversation_id=? AND role='student' ORDER BY sequence_number DESC LIMIT 1",
-            (cid,),
-        ).fetchone()
-        if row:
-            c.execute("DELETE FROM messages WHERE message_id=?", (row["message_id"],))
-            c.execute("UPDATE conversations SET updated_at=? WHERE conversation_id=?", (now(), cid))
+    storage.delete_last_student_message(cid, st.session_state.student_id, now())
 
 def problem_lookup(homework_id, problem_id):
     for h in homeworks:
@@ -404,20 +388,13 @@ def instructions_for(conv):
 
 # ---------- Usage safeguards ----------
 def usage_summary(student_id=None, since=None):
-    clauses, args = [], []
-    if student_id:
-        clauses.append("student_id=?"); args.append(student_id)
-    if since:
-        clauses.append("created_at>=?"); args.append(since.isoformat())
-    where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
-    with db() as c:
-        return c.execute(
-            f"SELECT COUNT(*) calls, COALESCE(SUM(estimated_cost_usd),0) cost FROM usage_events{where}", args
-        ).fetchone()
+    return storage.usage_summary(
+        student_id=student_id,
+        since=since.isoformat() if since else None,
+    )
 
 def student_message_count(cid):
-    with db() as c:
-        return c.execute("SELECT COUNT(*) FROM messages WHERE conversation_id=? AND role='student'", (cid,)).fetchone()[0]
+    return storage.student_message_count(cid, st.session_state.student_id)
 
 def check_usage_limits(cid):
     global_usage = usage_summary()
@@ -441,12 +418,18 @@ def record_usage(response, cid, request_kind):
     cached = int(getattr(details, "cached_tokens", 0) or 0) if details else 0
     uncached = max(0, input_tokens - cached)
     cost = (uncached * INPUT_USD_PER_M + cached * CACHED_INPUT_USD_PER_M + output_tokens * OUTPUT_USD_PER_M) / 1_000_000
-    with db() as c:
-        c.execute("""INSERT INTO usage_events
-            (usage_id,student_id,conversation_id,request_kind,model_name,input_tokens,cached_input_tokens,output_tokens,estimated_cost_usd,created_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            ("usage_" + uuid.uuid4().hex, st.session_state.student_id, cid, request_kind, MODEL,
-             input_tokens, cached, output_tokens, cost, now()))
+    storage.record_usage(
+        usage_id="usage_" + uuid.uuid4().hex,
+        student_id=st.session_state.student_id,
+        conversation_id=cid,
+        request_kind=request_kind,
+        model_name=MODEL,
+        input_tokens=input_tokens,
+        cached_input_tokens=cached,
+        output_tokens=output_tokens,
+        estimated_cost_usd=cost,
+        created_at=now(),
+    )
 
 BILLING_ERROR_CODES = {
     "credit_balance_exhausted",
@@ -613,11 +596,17 @@ with left:
         unnecessary = st.slider("How often did it make you do unnecessary work after you understood?", 1, 5, 1)
         comments = st.text_area("Anything else?", placeholder="A particular moment, suggestion, or problem...")
         if st.button("Submit feedback"):
-            with db() as c:
-                c.execute("""INSERT INTO feedback(feedback_id,student_id,conversation_id,helpfulness,frustration,too_much,unnecessary_work,comments,created_at)
-                    VALUES (?,?,?,?,?,?,?,?,?)""",
-                    ("feedback_" + uuid.uuid4().hex, st.session_state.student_id,
-                     st.session_state.get("active_conversation"), helpfulness, frustration, too_much, unnecessary, comments, now()))
+            storage.save_feedback(
+                feedback_id="feedback_" + uuid.uuid4().hex,
+                student_id=st.session_state.student_id,
+                conversation_id=st.session_state.get("active_conversation"),
+                helpfulness=helpfulness,
+                frustration=frustration,
+                too_much=too_much,
+                unnecessary_work=unnecessary,
+                comments=comments,
+                created_at=now(),
+            )
             st.success("Feedback saved. Thank you.")
 
 with right:
@@ -654,9 +643,9 @@ with right:
         active_row = get_conversation(active) if active else None
         active_key = (active_row["workspace"], active_row["activity_id"]) if active_row else None
         if active_key != desired_key:
-            with db() as c:
-                prior = c.execute("SELECT conversation_id FROM conversations WHERE student_id=? AND workspace='activity' AND activity_id=? ORDER BY updated_at DESC LIMIT 1",
-                                  (st.session_state.student_id, selected_activity["id"])).fetchone()
+            prior = storage.latest_activity_conversation(
+                st.session_state.student_id, selected_activity["id"]
+            )
             st.session_state.active_conversation = prior["conversation_id"] if prior else create_conversation("activity", selected_activity["title"], activity_id=selected_activity["id"])
     elif workspace == "Freeform discussion":
         active = st.session_state.get("active_conversation")
