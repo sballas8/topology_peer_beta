@@ -270,6 +270,53 @@ def load_messages(cid):
     with db() as c:
         return c.execute("SELECT * FROM messages WHERE conversation_id=? ORDER BY sequence_number", (cid,)).fetchall()
 
+def display_timestamp(value):
+    if not value:
+        return ""
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return parsed.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    except (TypeError, ValueError):
+        return str(value)
+
+def transcript_filename(conv):
+    safe_title = re.sub(r"[^A-Za-z0-9]+", "-", conv["title"]).strip("-").lower()
+    date = str(conv["created_at"])[:10]
+    return f"anna-transcript-{date}-{safe_title or 'conversation'}.md"
+
+def render_transcript(conv, messages):
+    """Create the student-facing record without internal prompts or identifiers."""
+    workspace_labels = {
+        "homework": "Homework",
+        "activity": "Assigned conversation",
+        "freeform": "Freeform discussion",
+    }
+    lines = [
+        "# Anna Conversation Transcript",
+        "",
+        f"**Course:** {course['course_name']}",
+        f"**Context:** {workspace_labels.get(conv['workspace'], conv['workspace'])}",
+        f"**Topic:** {conv['title']}",
+        f"**Started:** {display_timestamp(conv['created_at'])}",
+        f"**Last updated:** {display_timestamp(conv['updated_at'])}",
+        f"**Tutor version:** {conv['tutor_version']}",
+        "",
+        "---",
+        "",
+    ]
+    for message in messages:
+        speaker = "Student" if message["role"] == "student" else APP_NAME
+        timestamp = display_timestamp(message["created_at"])
+        lines.extend([
+            f"## {speaker}" + (f" — {timestamp}" if timestamp else ""),
+            "",
+            message["content"].strip(),
+            "",
+            "---",
+            "",
+        ])
+    return "\n".join(lines).rstrip() + "\n"
+
 def get_conversation(cid):
     if not cid:
         return None
@@ -626,7 +673,18 @@ with right:
         launch_error = launch_activity_if_needed(cid)
         if launch_error:
             st.warning(launch_error)
+        else:
+            # An assigned conversation may have just received its opening message.
+            # Refresh metadata so the exported last-updated time is accurate.
+            conv = get_conversation(cid)
         messages = load_messages(cid)
+        st.download_button(
+            "⬇ Download transcript",
+            data=render_transcript(conv, messages),
+            file_name=transcript_filename(conv),
+            mime="text/markdown",
+            help="Download this conversation for your records or assignment submission.",
+        )
         for m in messages:
             with st.chat_message("user" if m["role"] == "student" else "assistant"):
                 st.markdown(m["content"])
