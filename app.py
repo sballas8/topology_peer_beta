@@ -33,6 +33,8 @@ MAX_OUTPUT_TOKENS = setting("MAX_OUTPUT_TOKENS", 1000, int)
 MAX_DAILY_CALLS = setting("MAX_DAILY_CALLS", 50, int)
 MAX_CONVERSATION_STUDENT_MESSAGES = setting("MAX_CONVERSATION_STUDENT_MESSAGES", 30, int)
 MAX_CALLS_PER_MINUTE = setting("MAX_CALLS_PER_MINUTE", 8, int)
+MAX_STUDENT_MESSAGE_CHARS = setting("MAX_STUDENT_MESSAGE_CHARS", 8000, int)
+MAX_CONVERSATION_CHARS = setting("MAX_CONVERSATION_CHARS", 60000, int)
 BETA_BUDGET_USD = setting("BETA_BUDGET_USD", 25.0, float)
 # Current regular GPT-5.6 Sol promotional rates; configurable so pricing changes do not
 # require an application edit.
@@ -396,6 +398,20 @@ def usage_summary(student_id=None, since=None):
 def student_message_count(cid):
     return storage.student_message_count(cid, st.session_state.student_id)
 
+def check_message_size(cid, user_text):
+    if len(user_text) > MAX_STUDENT_MESSAGE_CHARS:
+        return False, (
+            f"That message is too long for the beta. Please shorten it to "
+            f"{MAX_STUDENT_MESSAGE_CHARS:,} characters or fewer."
+        )
+    existing_chars = sum(len(message["content"]) for message in load_messages(cid))
+    if existing_chars + len(user_text) > MAX_CONVERSATION_CHARS:
+        return False, (
+            "This thread has reached the beta's overall length limit. "
+            "Download the transcript and start a new conversation to continue."
+        )
+    return True, None
+
 def check_usage_limits(cid):
     global_usage = usage_summary()
     if global_usage["cost"] >= BETA_BUDGET_USD:
@@ -688,22 +704,26 @@ with right:
             if not limit_ok:
                 st.warning(limit_message)
             else:
-                save_message(cid, "student", user_text)
-                messages = load_messages(cid)
-                api_messages = [{"role": "user" if m["role"] == "student" else "assistant", "content": m["content"]} for m in messages]
-                with st.spinner(f"{APP_NAME} is thinking..."):
-                    answer, error = call_tutor(
-                        cid=cid, instructions=instructions_for(conv), input_value=api_messages, request_kind="dialogue"
-                    )
-                if answer:
-                    save_message(cid, "assistant", answer)
+                size_ok, size_message = check_message_size(cid, user_text)
+                if not size_ok:
+                    st.warning(size_message)
                 else:
-                    # Anna never processed this turn successfully. Remove it so the student
-                    # can retry after a billing/quota/network problem without corrupting context.
-                    delete_last_student_message(cid)
-                    if error:
-                        st.warning(error)
-                    st.session_state["beta_last_error"] = error or f"{APP_NAME} could not complete that request."
-                st.rerun()
+                    save_message(cid, "student", user_text)
+                    messages = load_messages(cid)
+                    api_messages = [{"role": "user" if m["role"] == "student" else "assistant", "content": m["content"]} for m in messages]
+                    with st.spinner(f"{APP_NAME} is thinking..."):
+                        answer, error = call_tutor(
+                            cid=cid, instructions=instructions_for(conv), input_value=api_messages, request_kind="dialogue"
+                        )
+                    if answer:
+                        save_message(cid, "assistant", answer)
+                    else:
+                        # Anna never processed this turn successfully. Remove it so the student
+                        # can retry after a billing/quota/network problem without corrupting context.
+                        delete_last_student_message(cid)
+                        if error:
+                            st.warning(error)
+                        st.session_state["beta_last_error"] = error or f"{APP_NAME} could not complete that request."
+                    st.rerun()
     else:
         st.info("Choose a homework problem, open a saved conversation, or start a freeform discussion.")
