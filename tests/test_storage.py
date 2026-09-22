@@ -176,6 +176,58 @@ class StorageOwnershipTests(unittest.TestCase):
                 created_at="2026-01-01T00:02:00+00:00",
             )
 
+    def test_instructor_can_review_beta_records(self):
+        self.storage.record_usage(
+            usage_id="alice-usage",
+            student_id="alice",
+            conversation_id="alice-conversation",
+            request_kind="dialogue",
+            model_name="model",
+            input_tokens=100,
+            cached_input_tokens=20,
+            output_tokens=50,
+            estimated_cost_usd=0.01,
+            created_at="2026-01-01T00:02:00+00:00",
+        )
+        self.storage.save_feedback(
+            feedback_id="alice-feedback",
+            student_id="alice",
+            conversation_id="alice-conversation",
+            helpfulness=5,
+            frustration=1,
+            too_much=1,
+            unnecessary_work=1,
+            comments="Helpful",
+            created_at="2026-01-01T00:03:00+00:00",
+        )
+
+        students = {
+            row["student_id"]: row for row in self.storage.instructor_students()
+        }
+        self.assertEqual(set(students), {"alice", "bob"})
+        self.assertEqual(students["alice"]["conversation_count"], 1)
+        self.assertEqual(students["alice"]["message_count"], 1)
+
+        conversations = self.storage.instructor_conversations("alice")
+        self.assertEqual(conversations[0]["conversation_id"], "alice-conversation")
+        self.assertEqual(conversations[0]["message_count"], 1)
+        self.assertEqual(
+            self.storage.instructor_messages("alice-conversation")[0]["content"],
+            "Alice's private attempt",
+        )
+        self.assertEqual(
+            self.storage.instructor_feedback(
+                "alice", "alice-conversation"
+            )[0]["comments"],
+            "Helpful",
+        )
+        self.assertEqual(
+            self.storage.instructor_usage(
+                "alice", "alice-conversation"
+            )[0]["usage_id"],
+            "alice-usage",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

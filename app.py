@@ -1,5 +1,5 @@
 from pathlib import Path
-import json, os, re, time, uuid
+import hmac, json, os, re, time, uuid
 from datetime import datetime, timezone, timedelta
 
 import streamlit as st
@@ -45,6 +45,7 @@ OUTPUT_USD_PER_M = setting("OUTPUT_USD_PER_M", 20.0, float)
 
 raw_codes = setting("BETA_TESTER_CODES", "") or ""
 ALLOWED_TESTER_CODES = {x.strip() for x in raw_codes.split(",") if x.strip()}
+INSTRUCTOR_PASSWORD = setting("INSTRUCTOR_PASSWORD", "") or ""
 
 api_key = setting("OPENAI_API_KEY")
 if not api_key:
@@ -223,7 +224,7 @@ hr {
 
 # ---------- Closed-beta identity ----------
 # Testers receive random codes (e.g. T7K4Q2). No name/email is requested or stored.
-if "student_id" not in st.session_state:
+if "student_id" not in st.session_state and not st.session_state.get("instructor_authenticated"):
     st.title(f"{APP_NAME} — Beta")
     st.caption("Private usability test • Undergraduate Topology")
     if not ALLOWED_TESTER_CODES:
@@ -238,12 +239,27 @@ if "student_id" not in st.session_state:
             safe = re.sub(r"[^A-Za-z0-9_-]", "", code)
             st.session_state.student_id = "beta_" + safe
             st.rerun()
+    with st.expander("Instructor access"):
+        instructor_password = st.text_input(
+            "Instructor password",
+            type="password",
+            help="For the course instructor only.",
+        )
+        if st.button("Open instructor view"):
+            if not INSTRUCTOR_PASSWORD:
+                st.error("Instructor access is not configured on this deployment.")
+            elif hmac.compare_digest(instructor_password, INSTRUCTOR_PASSWORD):
+                st.session_state.instructor_authenticated = True
+                st.rerun()
+            else:
+                st.error("That instructor password is not valid.")
     st.stop()
 
 def ensure_student():
     storage.ensure_student(st.session_state.student_id, now())
 
-ensure_student()
+if not st.session_state.get("instructor_authenticated"):
+    ensure_student()
 
 def create_conversation(workspace, title, homework_id=None, problem_id=None, activity_id=None):
     cid = "conv_" + uuid.uuid4().hex
@@ -574,6 +590,103 @@ def launch_activity_if_needed(cid):
     if answer:
         save_message(cid, "assistant", answer)
     return error
+
+def render_instructor_view():
+    """Render the password-protected browser for temporary beta records."""
+    heading, exit_column = st.columns([6, 1])
+    with heading:
+        st.title(f"{APP_NAME} — Instructor view")
+        st.caption(
+            "Private beta records stored by this deployment. "
+            "Tester codes are pseudonymous."
+        )
+    with exit_column:
+        if st.button("Leave", use_container_width=True):
+            st.session_state.pop("instructor_authenticated", None)
+            st.rerun()
+
+    students = storage.instructor_students()
+    usage_events = storage.instructor_usage()
+    total_conversations = sum(row["conversation_count"] for row in students)
+    total_messages = sum(row["message_count"] for row in students)
+    total_cost = sum(float(row["estimated_cost_usd"] or 0) for row in usage_events)
+
+    metric_columns = st.columns(4)
+    metric_columns[0].metric("Testers", len(students))
+    metric_columns[1].metric("Conversations", total_conversations)
+    metric_columns[2].metric("Messages", total_messages)
+    metric_columns[3].metric("Estimated API cost", f"${total_cost:.2f}")
+
+    if not students:
+        st.info("No beta activity has been recorded yet.")
+        return
+
+    student_by_id = {row["student_id"]: row for row in students}
+    selected_student_id = st.selectbox(
+        "Tester",
+        list(student_by_id),
+        format_func=lambda student_id: (
+            f"{student_id.removeprefix('beta_')} — "
+            f"{student_by_id[student_id]['conversation_count']} conversations, "
+            f"{student_by_id[student_id]['message_count']} messages"
+        ),
+    )
+    conversations = storage.instructor_conversations(selected_student_id)
+    if not conversations:
+        st.info("This tester has not started a conversation yet.")
+        return
+
+    conversation_by_id = {row["conversation_id"]: row for row in conversations}
+    selected_conversation_id = st.selectbox(
+        "Conversation",
+        list(conversation_by_id),
+        format_func=lambda conversation_id: (
+            f"{conversation_by_id[conversation_id]['title']} — "
+            f"{display_timestamp(conversation_by_id[conversation_id]['updated_at'])} "
+            f"({conversation_by_id[conversation_id]['message_count']} messages)"
+        ),
+    )
+    conversation = conversation_by_id[selected_conversation_id]
+    messages = storage.instructor_messages(selected_conversation_id)
+    feedback = storage.instructor_feedback(
+        selected_student_id, selected_conversation_id
+    )
+    conversation_usage = storage.instructor_usage(
+        selected_student_id, selected_conversation_id
+    )
+
+    transcript_tab, feedback_tab, usage_tab = st.tabs(
+        ["Transcript", f"Feedback ({len(feedback)})", f"Usage ({len(conversation_usage)})"]
+    )
+    with transcript_tab:
+        st.download_button(
+            "⬇ Download transcript",
+            data=render_transcript(conversation, messages),
+            file_name=transcript_filename(conversation),
+            mime="text/markdown",
+        )
+        if not messages:
+            st.info("No messages have been recorded in this conversation.")
+        for message in messages:
+            with st.chat_message(
+                "user" if message["role"] == "student" else "assistant"
+            ):
+                st.caption(display_timestamp(message["created_at"]))
+                st.markdown(message["content"])
+    with feedback_tab:
+        if feedback:
+            st.dataframe(feedback, use_container_width=True, hide_index=True)
+        else:
+            st.info("No feedback is attached to this conversation.")
+    with usage_tab:
+        if conversation_usage:
+            st.dataframe(conversation_usage, use_container_width=True, hide_index=True)
+        else:
+            st.info("No API usage is attached to this conversation.")
+
+if st.session_state.get("instructor_authenticated"):
+    render_instructor_view()
+    st.stop()
 
 # ---------- Main beta UI ----------
 st.markdown(

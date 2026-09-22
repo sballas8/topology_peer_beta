@@ -290,3 +290,76 @@ class SQLiteStorage:
                     created_at,
                 ),
             )
+
+    # Instructor-only read methods. Authentication is enforced by the
+    # application before these unscoped views are made available.
+    def instructor_students(self):
+        with self._connect() as connection:
+            rows = connection.execute(
+                """SELECT students.student_id, students.created_at,
+                          COUNT(DISTINCT conversations.conversation_id) AS conversation_count,
+                          COUNT(messages.message_id) AS message_count
+                   FROM students
+                   LEFT JOIN conversations
+                     ON conversations.student_id=students.student_id
+                   LEFT JOIN messages
+                     ON messages.conversation_id=conversations.conversation_id
+                   GROUP BY students.student_id, students.created_at
+                   ORDER BY students.created_at, students.student_id"""
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def instructor_conversations(self, student_id):
+        with self._connect() as connection:
+            rows = connection.execute(
+                """SELECT conversations.*,
+                          COUNT(messages.message_id) AS message_count
+                   FROM conversations
+                   LEFT JOIN messages
+                     ON messages.conversation_id=conversations.conversation_id
+                   WHERE conversations.student_id=?
+                   GROUP BY conversations.conversation_id
+                   ORDER BY conversations.updated_at DESC""",
+                (student_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def instructor_messages(self, conversation_id):
+        with self._connect() as connection:
+            rows = connection.execute(
+                """SELECT * FROM messages
+                   WHERE conversation_id=?
+                   ORDER BY sequence_number""",
+                (conversation_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def instructor_feedback(self, student_id=None, conversation_id=None):
+        clauses, args = [], []
+        if student_id is not None:
+            clauses.append("student_id=?")
+            args.append(student_id)
+        if conversation_id is not None:
+            clauses.append("conversation_id=?")
+            args.append(conversation_id)
+        where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+        with self._connect() as connection:
+            rows = connection.execute(
+                f"SELECT * FROM feedback{where} ORDER BY created_at DESC", args
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def instructor_usage(self, student_id=None, conversation_id=None):
+        clauses, args = [], []
+        if student_id is not None:
+            clauses.append("student_id=?")
+            args.append(student_id)
+        if conversation_id is not None:
+            clauses.append("conversation_id=?")
+            args.append(conversation_id)
+        where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+        with self._connect() as connection:
+            rows = connection.execute(
+                f"SELECT * FROM usage_events{where} ORDER BY created_at DESC", args
+            ).fetchall()
+        return [dict(row) for row in rows]
