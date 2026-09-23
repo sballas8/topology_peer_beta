@@ -1,5 +1,5 @@
 from pathlib import Path
-import hmac, json, os, re, time, uuid
+import csv, hmac, io, json, os, re, time, uuid, zipfile
 from datetime import datetime, timezone, timedelta
 
 import streamlit as st
@@ -327,6 +327,69 @@ def render_transcript(conv, messages):
         ])
     return "\n".join(lines).rstrip() + "\n"
 
+def csv_text(rows):
+    """Serialize a list of record dictionaries for the instructor export."""
+    output = io.StringIO(newline="")
+    if rows:
+        writer = csv.DictWriter(output, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    return output.getvalue()
+
+def build_beta_export(students):
+    """Build a complete, human-readable beta snapshot as an in-memory ZIP."""
+    archive = io.BytesIO()
+    all_conversations = []
+    conversation_count = 0
+    message_count = 0
+
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+        for student in students:
+            student_id = student["student_id"]
+            tester_code = student_id.removeprefix("beta_")
+            safe_tester = re.sub(r"[^A-Za-z0-9_-]", "_", tester_code)
+            conversations = storage.instructor_conversations(student_id)
+            all_conversations.extend(conversations)
+            conversation_count += len(conversations)
+
+            for conversation in conversations:
+                messages = storage.instructor_messages(
+                    conversation["conversation_id"]
+                )
+                message_count += len(messages)
+                safe_title = re.sub(
+                    r"[^A-Za-z0-9]+", "-", conversation["title"] or "conversation"
+                ).strip("-").lower()
+                short_id = conversation["conversation_id"][-8:]
+                transcript_path = (
+                    f"transcripts/{safe_tester}/"
+                    f"{str(conversation['created_at'])[:10]}-{safe_title}-{short_id}.md"
+                )
+                bundle.writestr(
+                    transcript_path, render_transcript(conversation, messages)
+                )
+
+        feedback = storage.instructor_feedback()
+        usage = storage.instructor_usage()
+        exported_at = now()
+        manifest = {
+            "exported_at": exported_at,
+            "application": APP_NAME,
+            "tester_count": len(students),
+            "conversation_count": conversation_count,
+            "message_count": message_count,
+            "feedback_count": len(feedback),
+            "usage_event_count": len(usage),
+        }
+        bundle.writestr("manifest.json", json.dumps(manifest, indent=2))
+        bundle.writestr("students.csv", csv_text(students))
+        bundle.writestr("conversations.csv", csv_text(all_conversations))
+        bundle.writestr("feedback.csv", csv_text(feedback))
+        bundle.writestr("usage.csv", csv_text(usage))
+
+    archive.seek(0)
+    return archive.getvalue()
+
 def get_conversation(cid):
     if not cid:
         return None
@@ -616,6 +679,20 @@ def render_instructor_view():
     metric_columns[1].metric("Conversations", total_conversations)
     metric_columns[2].metric("Messages", total_messages)
     metric_columns[3].metric("Estimated API cost", f"${total_cost:.2f}")
+
+    export_date = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%SZ")
+    st.download_button(
+        "⬇ Download all beta data",
+        data=build_beta_export(students),
+        file_name=f"anna-beta-backup-{export_date}.zip",
+        mime="application/zip",
+        type="primary",
+        help="Download every transcript, plus feedback, usage, and summary tables.",
+    )
+    st.caption(
+        "Save this ZIP somewhere on your computer after each testing session. "
+        "Streamlit may erase its temporary database without warning."
+    )
 
     if not students:
         st.info("No beta activity has been recorded yet.")
