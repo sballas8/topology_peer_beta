@@ -1,0 +1,19 @@
+[Unit]
+Description=ANNA Streamlit tutoring application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=anna
+Group=anna
+WorkingDirectory=/opt/anna
+EnvironmentFile=/etc/anna/anna.env
+ExecStart=/opt/anna/.venv/bin/python -m streamlit run /opt/anna/app.py --server.address=127.0.0.1 --server.port=8501 --server.headless=true --browser.gatherUsageStats=false
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
