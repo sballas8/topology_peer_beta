@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
-from storage import SQLiteStorage
+from session_storage import SessionStorage
 
 ROOT = Path(__file__).resolve().parent
 COURSE = ROOT / "course"
@@ -66,8 +66,8 @@ homeworks = [h for h in homeworks if h.get("available", True)]
 activity_files = [load_json(p) for p in sorted((COURSE / "activities").glob("*.json"))]
 activities = [item for week in activity_files for item in week.get("items", [])]
 
-storage = SQLiteStorage(DB, SCHEMA)
-storage.initialize(course["tutor_version"], tutor_prompt, MODEL, now())
+storage = SessionStorage()
+
 
 st.set_page_config(page_title=f"{APP_NAME} Beta", layout="wide")
 
@@ -224,9 +224,9 @@ hr {
 
 # ---------- Closed-beta identity ----------
 # Testers receive random codes (e.g. T7K4Q2). No name/email is requested or stored.
-if "student_id" not in st.session_state and not st.session_state.get("instructor_authenticated"):
+if "student_id" not in st.session_state:
     st.title(f"{APP_NAME} — Beta")
-    st.caption("Private usability test • Undergraduate Topology")
+    st.caption("Private usability test • Undergraduate Topology • No server-side transcript storage")
     if not ALLOWED_TESTER_CODES:
         st.error("No beta tester codes are configured on this deployment.")
         st.stop()
@@ -239,27 +239,12 @@ if "student_id" not in st.session_state and not st.session_state.get("instructor
             safe = re.sub(r"[^A-Za-z0-9_-]", "", code)
             st.session_state.student_id = "beta_" + safe
             st.rerun()
-    with st.expander("Instructor access"):
-        instructor_password = st.text_input(
-            "Instructor password",
-            type="password",
-            help="For the course instructor only.",
-        )
-        if st.button("Open instructor view"):
-            if not INSTRUCTOR_PASSWORD:
-                st.error("Instructor access is not configured on this deployment.")
-            elif hmac.compare_digest(instructor_password, INSTRUCTOR_PASSWORD):
-                st.session_state.instructor_authenticated = True
-                st.rerun()
-            else:
-                st.error("That instructor password is not valid.")
     st.stop()
 
 def ensure_student():
     storage.ensure_student(st.session_state.student_id, now())
 
-if not st.session_state.get("instructor_authenticated"):
-    ensure_student()
+ensure_student()
 
 def create_conversation(workspace, title, homework_id=None, problem_id=None, activity_id=None):
     cid = "conv_" + uuid.uuid4().hex
@@ -326,69 +311,6 @@ def render_transcript(conv, messages):
             "",
         ])
     return "\n".join(lines).rstrip() + "\n"
-
-def csv_text(rows):
-    """Serialize a list of record dictionaries for the instructor export."""
-    output = io.StringIO(newline="")
-    if rows:
-        writer = csv.DictWriter(output, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
-    return output.getvalue()
-
-def build_beta_export(students):
-    """Build a complete, human-readable beta snapshot as an in-memory ZIP."""
-    archive = io.BytesIO()
-    all_conversations = []
-    conversation_count = 0
-    message_count = 0
-
-    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
-        for student in students:
-            student_id = student["student_id"]
-            tester_code = student_id.removeprefix("beta_")
-            safe_tester = re.sub(r"[^A-Za-z0-9_-]", "_", tester_code)
-            conversations = storage.instructor_conversations(student_id)
-            all_conversations.extend(conversations)
-            conversation_count += len(conversations)
-
-            for conversation in conversations:
-                messages = storage.instructor_messages(
-                    conversation["conversation_id"]
-                )
-                message_count += len(messages)
-                safe_title = re.sub(
-                    r"[^A-Za-z0-9]+", "-", conversation["title"] or "conversation"
-                ).strip("-").lower()
-                short_id = conversation["conversation_id"][-8:]
-                transcript_path = (
-                    f"transcripts/{safe_tester}/"
-                    f"{str(conversation['created_at'])[:10]}-{safe_title}-{short_id}.md"
-                )
-                bundle.writestr(
-                    transcript_path, render_transcript(conversation, messages)
-                )
-
-        feedback = storage.instructor_feedback()
-        usage = storage.instructor_usage()
-        exported_at = now()
-        manifest = {
-            "exported_at": exported_at,
-            "application": APP_NAME,
-            "tester_count": len(students),
-            "conversation_count": conversation_count,
-            "message_count": message_count,
-            "feedback_count": len(feedback),
-            "usage_event_count": len(usage),
-        }
-        bundle.writestr("manifest.json", json.dumps(manifest, indent=2))
-        bundle.writestr("students.csv", csv_text(students))
-        bundle.writestr("conversations.csv", csv_text(all_conversations))
-        bundle.writestr("feedback.csv", csv_text(feedback))
-        bundle.writestr("usage.csv", csv_text(usage))
-
-    archive.seek(0)
-    return archive.getvalue()
 
 def get_conversation(cid):
     if not cid:
@@ -493,9 +415,9 @@ def check_message_size(cid, user_text):
     return True, None
 
 def check_usage_limits(cid):
-    global_usage = usage_summary()
-    if global_usage["cost"] >= BETA_BUDGET_USD:
-        return False, "The beta's overall usage allowance has been reached. Please tell the instructor."
+    # Session-only cost estimate; enforce a real provider-side budget separately.
+    if usage_summary(st.session_state.student_id)["cost"] >= BETA_BUDGET_USD:
+        return False, "This session has reached its usage allowance. Please tell the instructor."
     daily = usage_summary(st.session_state.student_id, datetime.now(timezone.utc) - timedelta(hours=24))
     if daily["calls"] >= MAX_DAILY_CALLS:
         return False, "You've reached the beta's daily conversation allowance. Please try again tomorrow."
@@ -574,8 +496,8 @@ def call_tutor(*, cid, instructions, input_value, request_kind):
             instructions=instructions,
             input=input_value,
             max_output_tokens=MAX_OUTPUT_TOKENS,
-            # Conversation history is stored only in the course database.
-            # Do not create persistent application state in the OpenAI API.
+            # Conversation history is held in the active Streamlit session.
+            # Do not request persistent application state in the OpenAI API.
             store=False,
         )
     except Exception as exc:
@@ -629,8 +551,7 @@ def submit_student_message(cid, conv, user_text):
         st.session_state.pop("beta_failed_conversation", None)
         return True, None
 
-    # Anna did not process this turn successfully. Remove it from the permanent
-    # transcript but retain a session-only copy so the student can retry.
+    # Remove a failed turn from session history but retain a retry copy.
     delete_last_student_message(cid)
     st.session_state["beta_failed_message"] = user_text
     st.session_state["beta_failed_conversation"] = cid
@@ -653,117 +574,6 @@ def launch_activity_if_needed(cid):
     if answer:
         save_message(cid, "assistant", answer)
     return error
-
-def render_instructor_view():
-    """Render the password-protected browser for temporary beta records."""
-    heading, exit_column = st.columns([6, 1])
-    with heading:
-        st.title(f"{APP_NAME} — Instructor view")
-        st.caption(
-            "Private beta records stored by this deployment. "
-            "Tester codes are pseudonymous."
-        )
-    with exit_column:
-        if st.button("Leave", use_container_width=True):
-            st.session_state.pop("instructor_authenticated", None)
-            st.rerun()
-
-    students = storage.instructor_students()
-    usage_events = storage.instructor_usage()
-    total_conversations = sum(row["conversation_count"] for row in students)
-    total_messages = sum(row["message_count"] for row in students)
-    total_cost = sum(float(row["estimated_cost_usd"] or 0) for row in usage_events)
-
-    metric_columns = st.columns(4)
-    metric_columns[0].metric("Testers", len(students))
-    metric_columns[1].metric("Conversations", total_conversations)
-    metric_columns[2].metric("Messages", total_messages)
-    metric_columns[3].metric("Estimated API cost", f"${total_cost:.2f}")
-
-    export_date = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%SZ")
-    st.download_button(
-        "⬇ Download all beta data",
-        data=build_beta_export(students),
-        file_name=f"anna-beta-backup-{export_date}.zip",
-        mime="application/zip",
-        type="primary",
-        help="Download every transcript, plus feedback, usage, and summary tables.",
-    )
-    st.caption(
-        "Save this ZIP somewhere on your computer after each testing session. "
-        "Streamlit may erase its temporary database without warning."
-    )
-
-    if not students:
-        st.info("No beta activity has been recorded yet.")
-        return
-
-    student_by_id = {row["student_id"]: row for row in students}
-    selected_student_id = st.selectbox(
-        "Tester",
-        list(student_by_id),
-        format_func=lambda student_id: (
-            f"{student_id.removeprefix('beta_')} — "
-            f"{student_by_id[student_id]['conversation_count']} conversations, "
-            f"{student_by_id[student_id]['message_count']} messages"
-        ),
-    )
-    conversations = storage.instructor_conversations(selected_student_id)
-    if not conversations:
-        st.info("This tester has not started a conversation yet.")
-        return
-
-    conversation_by_id = {row["conversation_id"]: row for row in conversations}
-    selected_conversation_id = st.selectbox(
-        "Conversation",
-        list(conversation_by_id),
-        format_func=lambda conversation_id: (
-            f"{conversation_by_id[conversation_id]['title']} — "
-            f"{display_timestamp(conversation_by_id[conversation_id]['updated_at'])} "
-            f"({conversation_by_id[conversation_id]['message_count']} messages)"
-        ),
-    )
-    conversation = conversation_by_id[selected_conversation_id]
-    messages = storage.instructor_messages(selected_conversation_id)
-    feedback = storage.instructor_feedback(
-        selected_student_id, selected_conversation_id
-    )
-    conversation_usage = storage.instructor_usage(
-        selected_student_id, selected_conversation_id
-    )
-
-    transcript_tab, feedback_tab, usage_tab = st.tabs(
-        ["Transcript", f"Feedback ({len(feedback)})", f"Usage ({len(conversation_usage)})"]
-    )
-    with transcript_tab:
-        st.download_button(
-            "⬇ Download transcript",
-            data=render_transcript(conversation, messages),
-            file_name=transcript_filename(conversation),
-            mime="text/markdown",
-        )
-        if not messages:
-            st.info("No messages have been recorded in this conversation.")
-        for message in messages:
-            with st.chat_message(
-                "user" if message["role"] == "student" else "assistant"
-            ):
-                st.caption(display_timestamp(message["created_at"]))
-                st.markdown(message["content"])
-    with feedback_tab:
-        if feedback:
-            st.dataframe(feedback, use_container_width=True, hide_index=True)
-        else:
-            st.info("No feedback is attached to this conversation.")
-    with usage_tab:
-        if conversation_usage:
-            st.dataframe(conversation_usage, use_container_width=True, hide_index=True)
-        else:
-            st.info("No API usage is attached to this conversation.")
-
-if st.session_state.get("instructor_authenticated"):
-    render_instructor_view()
-    st.stop()
 
 # ---------- Main beta UI ----------
 st.markdown(
@@ -800,7 +610,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-st.caption("Private usability test • Your conversations are saved under a pseudonymous tester code.")
+st.caption("Conversations are temporary and are not saved on the server. Download your transcript before leaving or refreshing your session.")
 
 left, right = st.columns([1, 3], gap="large")
 
@@ -831,28 +641,8 @@ with left:
         st.caption("Start a discussion about anything from the course.")
 
     with st.expander("How to use Anna"):
-        st.write("Use Anna naturally, as you would use office hours for the course. For assigned work, you are responsible for writing the final proof or exposition yourself. This is a beta: please report moments that feel especially helpful, frustrating, too easy, or overly guided.")
+        st.write("Use Anna naturally, as you would use office hours for the course. For assigned work, you are responsible for writing the final proof or exposition yourself. Download any transcript you need before leaving; ANNA does not save conversations between sessions.")
 
-    with st.expander("Beta feedback"):
-        st.caption("Feedback is linked only to your pseudonymous tester code.")
-        helpfulness = st.slider("How helpful was Anna?", 1, 5, 3)
-        frustration = st.slider("How frustrating was the interaction?", 1, 5, 1)
-        too_much = st.slider("How often did it give too much away?", 1, 5, 1)
-        unnecessary = st.slider("How often did it make you do unnecessary work after you understood?", 1, 5, 1)
-        comments = st.text_area("Anything else?", placeholder="A particular moment, suggestion, or problem...")
-        if st.button("Submit feedback"):
-            storage.save_feedback(
-                feedback_id="feedback_" + uuid.uuid4().hex,
-                student_id=st.session_state.student_id,
-                conversation_id=st.session_state.get("active_conversation"),
-                helpfulness=helpfulness,
-                frustration=frustration,
-                too_much=too_much,
-                unnecessary_work=unnecessary,
-                comments=comments,
-                created_at=now(),
-            )
-            st.success("Feedback saved. Thank you.")
 
 with right:
     c1, c2 = st.columns([8, 2])
@@ -870,8 +660,9 @@ with right:
                     st.session_state.pop("active_conversation", None)
                 st.rerun()
             if st.button("Leave beta", use_container_width=True):
-                for key in ["student_id", "active_conversation"]:
-                    st.session_state.pop(key, None)
+                for key in list(st.session_state):
+                    if key.startswith("anna_") or key in ["student_id", "active_conversation", "beta_failed_message", "beta_failed_conversation"]:
+                        st.session_state.pop(key, None)
                 st.rerun()
 
     if workspace == "Homework" and selected_hw and selected_problem:
