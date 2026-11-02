@@ -33,6 +33,7 @@ MODEL = setting(
     "amazon.nova-pro-v1:0" if PROVIDER == "bedrock" else "gpt-5.6",
 )
 APP_NAME = "Anna"
+AUTH_MODE = setting("ANNA_AUTH_MODE", "tester_codes").lower()
 MAX_OUTPUT_TOKENS = setting("MAX_OUTPUT_TOKENS", 1000, int)
 MAX_DAILY_CALLS = setting("MAX_DAILY_CALLS", 50, int)
 MAX_CONVERSATION_STUDENT_MESSAGES = setting("MAX_CONVERSATION_STUDENT_MESSAGES", 30, int)
@@ -244,9 +245,25 @@ hr {
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- Closed-beta identity ----------
-# Testers receive random codes (e.g. T7K4Q2). No name/email is requested or stored.
-if "student_id" not in st.session_state:
+# ---------- Authentication ----------
+if AUTH_MODE == "oidc":
+    if not st.user.is_logged_in:
+        st.title(f"{APP_NAME} — FSU Login")
+        st.write("Sign in with your FSU account to use Anna.")
+        if st.button("Sign in with FSU", type="primary"):
+            st.login("fsu")
+        st.stop()
+
+    # Use a random identifier for this browser session.
+    # Do not store FSU identity information in tutoring records.
+    if "student_id" not in st.session_state:
+        st.session_state.student_id = "session_" + uuid.uuid4().hex
+
+elif AUTH_MODE != "tester_codes":
+    st.error("Unsupported authentication mode.")
+    st.stop()
+
+if AUTH_MODE == "tester_codes" and "student_id" not in st.session_state:
     st.title(f"{APP_NAME} — Beta")
     st.caption("Private usability test • Undergraduate Topology • No server-side transcript storage")
     if not ALLOWED_TESTER_CODES:
@@ -717,9 +734,18 @@ with right:
                 st.rerun()
             if st.button("Leave beta", use_container_width=True):
                 for key in list(st.session_state):
-                    if key.startswith("anna_") or key in ["student_id", "active_conversation", "beta_failed_message", "beta_failed_conversation"]:
+                    if key.startswith("anna_") or key in [
+                        "student_id",
+                        "active_conversation",
+                        "beta_failed_message",
+                        "beta_failed_conversation",
+                    ]:
                         st.session_state.pop(key, None)
-                st.rerun()
+
+                if AUTH_MODE == "oidc":
+                    st.logout()
+                else:
+                    st.rerun()
 
     if workspace == "Homework" and selected_hw and selected_problem:
         desired_key = ("homework", selected_hw["id"], selected_problem["id"])

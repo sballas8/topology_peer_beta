@@ -1,4 +1,4 @@
-streamlit
+streamlit[auth]
 openai
 python-dotenv
 boto3

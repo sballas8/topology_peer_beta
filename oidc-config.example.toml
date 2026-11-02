@@ -1,0 +1,11 @@
+# Example configuration only.
+# Do not put real credentials in this file.
+
+[auth]
+redirect_uri = "https://anna.math.fsu.edu/oauth2callback"
+cookie_secret = "REPLACE_WITH_RANDOM_SECRET"
+
+[auth.fsu]
+client_id = "REPLACE_WITH_FSU_CLIENT_ID"
+client_secret = "REPLACE_WITH_FSU_CLIENT_SECRET"
+server_metadata_url = "https://login.microsoftonline.com/REPLACE_WITH_TENANT_ID/v2.0/.well-known/openid-configuration"
