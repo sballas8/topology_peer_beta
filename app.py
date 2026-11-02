@@ -27,7 +27,11 @@ def setting(name, default=None, cast=str):
         return default
     return cast(value)
 
-MODEL = setting("TOPOLOGY_PEER_MODEL", "gpt-5.6")
+PROVIDER = setting("TOPOLOGY_PEER_PROVIDER", "openai").lower()
+MODEL = setting(
+    "TOPOLOGY_PEER_MODEL",
+    "amazon.nova-pro-v1:0" if PROVIDER == "bedrock" else "gpt-5.6",
+)
 APP_NAME = "Anna"
 MAX_OUTPUT_TOKENS = setting("MAX_OUTPUT_TOKENS", 1000, int)
 MAX_DAILY_CALLS = setting("MAX_DAILY_CALLS", 50, int)
@@ -39,19 +43,37 @@ OPENAI_TIMEOUT_SECONDS = setting("OPENAI_TIMEOUT_SECONDS", 45.0, float)
 BETA_BUDGET_USD = setting("BETA_BUDGET_USD", 25.0, float)
 # Current regular GPT-5.6 Sol promotional rates; configurable so pricing changes do not
 # require an application edit.
-INPUT_USD_PER_M = setting("INPUT_USD_PER_M", 4.0, float)
-CACHED_INPUT_USD_PER_M = setting("CACHED_INPUT_USD_PER_M", 0.40, float)
-OUTPUT_USD_PER_M = setting("OUTPUT_USD_PER_M", 20.0, float)
+INPUT_USD_PER_M = setting(
+    "INPUT_USD_PER_M", 0.80 if PROVIDER == "bedrock" else 4.0, float
+)
+CACHED_INPUT_USD_PER_M = setting(
+    "CACHED_INPUT_USD_PER_M", 0.80 if PROVIDER == "bedrock" else 0.40, float
+)
+OUTPUT_USD_PER_M = setting(
+    "OUTPUT_USD_PER_M", 3.20 if PROVIDER == "bedrock" else 20.0, float
+)
 
 raw_codes = setting("BETA_TESTER_CODES", "") or ""
 ALLOWED_TESTER_CODES = {x.strip() for x in raw_codes.split(",") if x.strip()}
 INSTRUCTOR_PASSWORD = setting("INSTRUCTOR_PASSWORD", "") or ""
 
-api_key = setting("OPENAI_API_KEY")
-if not api_key:
-    st.error("The beta server is missing its OpenAI API key.")
+if PROVIDER == "openai":
+    api_key = setting("OPENAI_API_KEY")
+    if not api_key:
+        st.error("The beta server is missing its OpenAI API key.")
+        st.stop()
+    client = OpenAI(api_key=api_key, timeout=OPENAI_TIMEOUT_SECONDS)
+
+elif PROVIDER == "bedrock":
+    import boto3
+    client = boto3.client(
+        "bedrock-runtime",
+        region_name=setting("AWS_REGION", "us-east-1"),
+    )
+
+else:
+    st.error("Unsupported model provider.")
     st.stop()
-client = OpenAI(api_key=api_key, timeout=OPENAI_TIMEOUT_SECONDS)
 
 def now():
     return datetime.now(timezone.utc).isoformat()
@@ -429,11 +451,17 @@ def check_usage_limits(cid):
     return True, None
 
 def record_usage(response, cid, request_kind):
-    usage = getattr(response, "usage", None)
-    input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
-    output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
-    details = getattr(usage, "input_tokens_details", None)
-    cached = int(getattr(details, "cached_tokens", 0) or 0) if details else 0
+    if PROVIDER == "bedrock":
+        usage = response.get("usage", {})
+        input_tokens = int(usage.get("inputTokens", 0) or 0)
+        output_tokens = int(usage.get("outputTokens", 0) or 0)
+        cached = int(usage.get("cacheReadInputTokens", 0) or 0)
+    else:
+        usage = getattr(response, "usage", None)
+        input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
+        output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
+        details = getattr(usage, "input_tokens_details", None)
+        cached = int(getattr(details, "cached_tokens", 0) or 0) if details else 0
     uncached = max(0, input_tokens - cached)
     cost = (uncached * INPUT_USD_PER_M + cached * CACHED_INPUT_USD_PER_M + output_tokens * OUTPUT_USD_PER_M) / 1_000_000
     storage.record_usage(
@@ -491,15 +519,43 @@ def call_tutor(*, cid, instructions, input_value, request_kind):
     if not allowed:
         return None, message
     try:
-        response = client.responses.create(
-            model=MODEL,
-            instructions=instructions,
-            input=input_value,
-            max_output_tokens=MAX_OUTPUT_TOKENS,
-            # Conversation history is held in the active Streamlit session.
-            # Do not request persistent application state in the OpenAI API.
-            store=False,
-        )
+        if PROVIDER == "bedrock":
+            turns = (
+                input_value
+                if isinstance(input_value, list)
+                else [{"role": "user", "content": input_value}]
+            )
+
+            messages = [
+                {
+                    "role": turn["role"],
+                    "content": [{"text": turn["content"]}],
+                }
+                for turn in turns
+            ]
+
+            response = client.converse(
+                modelId=MODEL,
+                system=[{"text": instructions}],
+                messages=messages,
+                inferenceConfig={"maxTokens": MAX_OUTPUT_TOKENS},
+            )
+
+            answer = "".join(
+                block.get("text", "")
+                for block in response["output"]["message"]["content"]
+            )
+
+        else:
+            response = client.responses.create(
+                model=MODEL,
+                instructions=instructions,
+                input=input_value,
+                max_output_tokens=MAX_OUTPUT_TOKENS,
+                store=False,
+            )
+
+            answer = response.output_text
     except Exception as exc:
         # Keep the student-facing message generic, but log the real exception for diagnosis.
         import traceback
@@ -510,7 +566,7 @@ def call_tutor(*, cid, instructions, input_value, request_kind):
             flush=True,
         )
         traceback.print_exc()
-        if openai_error_code(exc):
+        if PROVIDER == "openai" and openai_error_code(exc):
             return None, (
                 f"{APP_NAME} is temporarily unavailable because the beta's API usage allowance "
                 "has been exhausted. Your conversation is saved; please try again after the "
@@ -518,7 +574,7 @@ def call_tutor(*, cid, instructions, input_value, request_kind):
             )
         return None, f"{APP_NAME} could not complete that request. Please try again."
     record_usage(response, cid, request_kind)
-    return response.output_text, None
+    return answer, None
 
 def submit_student_message(cid, conv, user_text):
     """Validate, send, and persist one student turn without leaving partial state."""
