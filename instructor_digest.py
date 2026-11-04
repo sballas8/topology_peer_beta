@@ -84,7 +84,7 @@ def main():
 
     report = analyze_transcripts(transcripts)
 
-    output = Path("/var/lib/anna/instructor_digest.md")
+    output = Path("/var/lib/anna/digests/instructor_digest.md")
     output.write_text(report, encoding="utf-8")
 
     print(f"Digest saved to {output}")
