@@ -7,6 +7,9 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from session_storage import SessionStorage
 
+from pathlib import Path
+from uuid import uuid4
+
 ROOT = Path(__file__).resolve().parent
 COURSE = ROOT / "course"
 DB = COURSE / "conversations" / "beta_conversations.db"
@@ -322,7 +325,7 @@ def transcript_filename(conv):
     date = str(conv["created_at"])[:10]
     return f"anna-transcript-{date}-{safe_title or 'conversation'}.md"
 
-def render_transcript(conv, messages):
+def render_transcript(conv, messages, anonymous=False):
     """Create the student-facing record without internal prompts or identifiers."""
     workspace_labels = {
         "homework": "Homework",
@@ -335,8 +338,10 @@ def render_transcript(conv, messages):
         f"**Course:** {course['course_name']}",
         f"**Context:** {workspace_labels.get(conv['workspace'], conv['workspace'])}",
         f"**Topic:** {conv['title']}",
-        f"**Started:** {display_timestamp(conv['created_at'])}",
-        f"**Last updated:** {display_timestamp(conv['updated_at'])}",
+       *([] if anonymous else [
+           f"**Started:** {display_timestamp(conv['created_at'])}",
+           f"**Last updated:** {display_timestamp(conv['updated_at'])}",
+       ]),
         f"**Tutor version:** {conv['tutor_version']}",
         "",
         "---",
@@ -344,7 +349,7 @@ def render_transcript(conv, messages):
     ]
     for message in messages:
         speaker = "Student" if message["role"] == "student" else APP_NAME
-        timestamp = display_timestamp(message["created_at"])
+        timestamp = None if anonymous else display_timestamp(message["created_at"])
         lines.extend([
             f"## {speaker}" + (f" — {timestamp}" if timestamp else ""),
             "",
@@ -354,6 +359,19 @@ def render_transcript(conv, messages):
             "",
         ])
     return "\n".join(lines).rstrip() + "\n"
+
+def save_anonymous_transcript(conv, messages):
+    """Save a voluntarily submitted transcript without identifying metadata."""
+    directory = Path("/var/lib/anna/submissions")
+    transcript = render_transcript(conv, messages, anonymous=True)
+
+    filename = f"{uuid4().hex}.md"
+    destination = directory / filename
+
+    with destination.open("x", encoding="utf-8") as file:
+        file.write(transcript)
+
+    return filename
 
 def get_conversation(cid):
     if not cid:
@@ -795,6 +813,16 @@ with right:
             mime="text/markdown",
             help="Download this conversation for your records or assignment submission.",
         )
+        if st.button(
+            "Share anonymously with instructor",
+            disabled=not messages,
+            help="Voluntary and ungraded. Sends this conversation to your instructor without account identifiers.",
+        ):
+            try:
+                save_anonymous_transcript(conv, messages)
+                st.success("Conversation shared successfully. Thank you!")
+            except OSError:
+                st.error("Unable to share the conversation. Please try again.")
         for m in messages:
             with st.chat_message("user" if m["role"] == "student" else "assistant"):
                 st.markdown(m["content"])
