@@ -783,6 +783,8 @@ def confirm_new_conversation():
         st.rerun()
 
 with right:
+    if st.session_state.pop("anna_share_success", False):
+        st.toast("Conversation shared anonymously with your instructor.")
     c1, c2 = st.columns([8, 2])
     with c1:
         st.subheader("Dialogue")
