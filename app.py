@@ -92,7 +92,7 @@ activities = [item for week in activity_files for item in week.get("items", [])]
 storage = SessionStorage()
 
 
-st.set_page_config(page_title=f"{APP_NAME} Beta", layout="wide")
+st.set_page_config(page_title=f"{APP_NAME}", layout="wide")
 
 st.markdown("""
 <style>
@@ -268,13 +268,13 @@ elif AUTH_MODE != "tester_codes":
     st.stop()
 
 if AUTH_MODE == "tester_codes" and "student_id" not in st.session_state:
-    st.title(f"{APP_NAME} — Beta")
-    st.caption("Private usability test • Undergraduate Topology • No server-side transcript storage")
+    st.title(f"{APP_NAME}")
+    st.caption("Undergraduate Topology • Florida State University")
     if not ALLOWED_TESTER_CODES:
         st.error("No beta tester codes are configured on this deployment.")
         st.stop()
     code = st.text_input("Tester code", type="password", help="Use the code supplied by the instructor.")
-    if st.button("Enter beta", type="primary"):
+    if st.button("Access Anna", type="primary"):
         code = code.strip()
         if code not in ALLOWED_TESTER_CODES:
             st.error("That tester code is not valid.")
@@ -446,13 +446,13 @@ def student_message_count(cid):
 def check_message_size(cid, user_text):
     if len(user_text) > MAX_STUDENT_MESSAGE_CHARS:
         return False, (
-            f"That message is too long for the beta. Please shorten it to "
+            f"That message is too long. Please shorten it to "
             f"{MAX_STUDENT_MESSAGE_CHARS:,} characters or fewer."
         )
     existing_chars = sum(len(message["content"]) for message in load_messages(cid))
     if existing_chars + len(user_text) > MAX_CONVERSATION_CHARS:
         return False, (
-            "This thread has reached the beta's overall length limit. "
+            "This thread has reached the overall length limit. "
             "Download the transcript and start a new conversation to continue."
         )
     return True, None
@@ -463,12 +463,12 @@ def check_usage_limits(cid):
         return False, "This session has reached its usage allowance. Please tell the instructor."
     daily = usage_summary(st.session_state.student_id, datetime.now(timezone.utc) - timedelta(hours=24))
     if daily["calls"] >= MAX_DAILY_CALLS:
-        return False, "You've reached the beta's daily conversation allowance. Please try again tomorrow."
+        return False, "You've reached the daily conversation allowance. Please try again tomorrow."
     minute = usage_summary(st.session_state.student_id, datetime.now(timezone.utc) - timedelta(minutes=1))
     if minute["calls"] >= MAX_CALLS_PER_MINUTE:
         return False, "You're sending messages unusually quickly. Please wait about a minute and try again."
     if cid and student_message_count(cid) >= MAX_CONVERSATION_STUDENT_MESSAGES:
-        return False, "This thread has reached the beta length limit. Start a new conversation from Settings to continue."
+        return False, "This thread has reached the length limit. Start a new conversation from Settings to continue."
     return True, None
 
 def record_usage(response, cid, request_kind):
@@ -589,7 +589,7 @@ def call_tutor(*, cid, instructions, input_value, request_kind):
         traceback.print_exc()
         if PROVIDER == "openai" and openai_error_code(exc):
             return None, (
-                f"{APP_NAME} is temporarily unavailable because the beta's API usage allowance "
+                f"{APP_NAME} is temporarily unavailable because the API usage allowance "
                 "has been exhausted. Your conversation is saved; please try again after the "
                 "instructor restores the allowance."
             )
@@ -681,7 +681,6 @@ st.markdown(
             Undergraduate Topology
             <span style="color:#CEB888; padding:0 .45rem;">◆</span>
             Florida State University
-            <span style="opacity:.78;"> · Beta</span>
         </div>
     </div>
     """,
@@ -736,7 +735,7 @@ with right:
                 else:
                     st.session_state.pop("active_conversation", None)
                 st.rerun()
-            if st.button("Leave beta", use_container_width=True):
+            if st.button("Sign Out", use_container_width=True):
                 for key in list(st.session_state):
                     if key.startswith("anna_") or key in [
                         "student_id",
