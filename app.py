@@ -790,6 +790,9 @@ def complete_sign_out():
 
 @st.dialog("Before signing out")
 def confirm_sign_out():
+    cid = st.session_state.get("active_conversation")
+    conv = get_conversation(cid)
+    messages = load_messages(cid) if cid else []
     st.write(
         "Would you like to share your current conversation anonymously "
         "with your instructor? Sharing is optional and has no effect on your grade."
@@ -850,6 +853,8 @@ def confirm_new_conversation():
 with right:
     if st.session_state.pop("anna_share_success", False):
         st.toast("Conversation shared anonymously with your instructor.")
+    if st.session_state.pop("anna_already_shared", False):
+        st.toast("This version of the conversation was already shared.")
     c1, c2 = st.columns([8, 2])
     with c1:
         st.subheader("Dialogue")
@@ -923,8 +928,13 @@ with right:
             help="Voluntary and ungraded. Sends this conversation to your instructor without account identifiers.",
         ):
             try:
-                save_anonymous_transcript(conv, messages)
-                st.success("Conversation shared successfully. Thank you!")
+                saved = save_anonymous_transcript(conv, messages)
+
+                if saved:
+                    st.success("Conversation shared successfully. Thank you!")
+                else:
+                    st.info("This version of the conversation has already been shared.")
+
             except OSError:
                 st.error("Unable to share the conversation. Please try again.")
         for m in messages:
