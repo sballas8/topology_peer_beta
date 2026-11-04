@@ -100,16 +100,15 @@ st.markdown("""
     --fsu-garnet: #782F40;
     --fsu-garnet-dark: #4F1F2A;
     --fsu-gold: #CEB888;
-    --fsu-pale-gold: #F5F0E7;
-    --fsu-paper: #FCFAF6;
-    --fsu-ink: #2F292B;
+    --fsu-pale-gold: var(--st-secondary-background-color, #F5F0E7);
+    --fsu-paper: var(--st-background-color, #FCFAF6);
+    --fsu-ink: var(--st-text-color, #2F292B);
     --fsu-muted: #6D6467;
 }
 
 /* Warm paper-like page rather than a completely white application shell */
 .stApp {
-    background:
-        linear-gradient(180deg, #F7F2E9 0px, #FCFAF6 150px, #FFFFFF 430px);
+    background: var(--fsu-paper);
     color: var(--fsu-ink);
 }
 
@@ -135,11 +134,12 @@ st.markdown("""
 
 /* Typography */
 h1, h2, h3 {
-    color: var(--fsu-garnet);
+    color: var(--fsu-ink);
     letter-spacing: -0.015em;
 }
+
 h4, h5, h6 {
-    color: var(--fsu-garnet-dark);
+    color: var(--fsu-ink);
 }
 
 /* The left control column reads as a coherent course panel */
@@ -172,19 +172,22 @@ textarea:focus {
     border-color: var(--fsu-garnet-dark);
 }
 .stButton > button:not([kind="primary"]) {
-    border: 1px solid #BCA9AE;
+    border: 1px solid var(--fsu-ink);
     border-radius: 7px;
+    color: var(--fsu-ink);
 }
+
 .stButton > button:not([kind="primary"]):hover {
-    border-color: var(--fsu-garnet);
-    color: var(--fsu-garnet);
+    border-color: var(--st-primary-color, #782F40);
+    color: var(--st-primary-color, #782F40);
 }
 
 /* Problem / activity material gets a warmer course-handout feel */
 div[data-testid="stExpander"] {
-    background: rgba(255,255,255,.68);
-    border: 1px solid #DDD0BC;
+    background: var(--fsu-pale-gold);
+    border: 1px solid var(--fsu-ink);
     border-radius: 9px;
+}
 }
 div[data-testid="stExpander"] summary:hover {
     color: var(--fsu-garnet);
@@ -193,7 +196,7 @@ div[data-testid="stExpander"] summary:hover {
 /* Dialogue pane */
 div[data-testid="stChatMessage"] {
     border-radius: 12px;
-    border: 1px solid #E3DCD2;
+    border: 1px solid var(--fsu-pale-gold);
     padding-top: .35rem;
     padding-bottom: .35rem;
     box-shadow: 0 1px 2px rgba(55,35,40,.035);
@@ -204,22 +207,23 @@ div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"
     background: var(--fsu-pale-gold);
     border-left: 4px solid var(--fsu-garnet);
 }
+
 div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
-    background: #FFFFFF;
+    background: var(--fsu-paper);
     border-left: 4px solid var(--fsu-gold);
 }
 
 /* Chat input anchors the dialogue in the palette */
 div[data-testid="stChatInput"] {
-    border: 1px solid #D7C8B1;
+    border: 1px solid var(--fsu-pale-gold);
     border-top: 3px solid var(--fsu-garnet);
     border-radius: 10px;
-    background: #FFFFFF;
+    background: var(--fsu-pale-gold);
 }
 
 /* Settings button */
 button[aria-label*="Settings"] {
-    color: var(--fsu-garnet);
+    color: var(--fsu-ink);
 }
 
 /* Sliders */
@@ -229,7 +233,7 @@ div[data-testid="stSlider"] [role="slider"] {
 
 /* Links */
 a {
-    color: var(--fsu-garnet);
+    color: var(--st-primary-color, #782F40);
     text-decoration-color: var(--fsu-gold);
 }
 
