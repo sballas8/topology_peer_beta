@@ -756,6 +756,48 @@ def start_new_conversation():
 
     st.rerun()
 
+def complete_sign_out():
+    for key in list(st.session_state):
+        if key.startswith("anna_") or key in [
+            "student_id",
+            "active_conversation",
+            "beta_failed_message",
+            "beta_failed_conversation",
+        ]:
+            st.session_state.pop(key, None)
+
+    if AUTH_MODE == "oidc":
+        st.logout()
+    else:
+        st.rerun()
+
+
+@st.dialog("Before signing out")
+def confirm_sign_out():
+    st.write(
+        "Would you like to share your current conversation anonymously "
+        "with your instructor? Sharing is optional and has no effect on your grade."
+    )
+
+    if st.button("Share anonymously", key="signout_share", use_container_width=True):
+        cid = st.session_state.get("active_conversation")
+        conv = get_conversation(cid)
+        messages = load_messages(cid)
+
+        try:
+            save_anonymous_transcript(conv, messages)
+        except OSError:
+            st.error("Unable to share. Please try again.")
+            return
+
+        complete_sign_out()
+
+    if st.button("Continue without sharing", key="signout_skip", use_container_width=True):
+        complete_sign_out()
+
+    if st.button("Cancel", key="signout_cancel", use_container_width=True):
+        st.rerun()
+
 @st.dialog("Before starting a new conversation")
 def confirm_new_conversation():
     st.write(
@@ -799,19 +841,13 @@ with right:
                 else:
                     start_new_conversation()
             if st.button("Sign Out", use_container_width=True):
-                for key in list(st.session_state):
-                    if key.startswith("anna_") or key in [
-                        "student_id",
-                        "active_conversation",
-                        "beta_failed_message",
-                        "beta_failed_conversation",
-                    ]:
-                        st.session_state.pop(key, None)
+                cid = st.session_state.get("active_conversation")
+                messages = load_messages(cid) if cid else []
 
-                if AUTH_MODE == "oidc":
-                    st.logout()
+                if any(m["role"] == "student" for m in messages):
+                    confirm_sign_out()
                 else:
-                    st.rerun()
+                    complete_sign_out()
 
     if workspace == "Homework" and selected_hw and selected_problem:
         desired_key = ("homework", selected_hw["id"], selected_problem["id"])
