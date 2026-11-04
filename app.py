@@ -737,6 +737,50 @@ with left:
     with st.expander("How to use Anna"):
         st.write("Use Anna naturally, as you would use office hours for the course. For assigned work, you are responsible for writing the final proof or exposition yourself. Download any transcript you need before leaving; ANNA does not save conversations between sessions.")
 
+def start_new_conversation():
+    if workspace == "Conversations" and selected_activity:
+        st.session_state.active_conversation = create_conversation(
+            "activity",
+            selected_activity["title"],
+            activity_id=selected_activity["id"],
+        )
+    elif workspace == "Homework" and selected_hw and selected_problem:
+        st.session_state.active_conversation = create_conversation(
+            "homework",
+            f"{selected_hw['title']}, Problem {selected_problem['number']}",
+            selected_hw["id"],
+            selected_problem["id"],
+        )
+    else:
+        st.session_state.pop("active_conversation", None)
+
+    st.rerun()
+
+@st.dialog("Before starting a new conversation")
+def confirm_new_conversation():
+    st.write(
+        "Would you like to share your current conversation anonymously "
+        "with your instructor? Sharing is optional and has no effect on your grade."
+    )
+
+    if st.button("Share anonymously", use_container_width=True):
+        conv = get_conversation(st.session_state.active_conversation)
+        messages = load_messages(st.session_state.active_conversation)
+
+        try:
+            save_anonymous_transcript(conv, messages)
+            st.session_state["anna_share_success"] = True
+        except OSError:
+            st.error("Unable to share. Please try again.")
+            return
+
+        start_new_conversation()
+
+    if st.button("Continue without sharing", use_container_width=True):
+        start_new_conversation()
+
+    if st.button("Cancel", use_container_width=True):
+        st.rerun()
 
 with right:
     c1, c2 = st.columns([8, 2])
@@ -745,14 +789,13 @@ with right:
     with c2:
         with st.popover("⚙ Settings"):
             if st.button("New conversation", use_container_width=True):
-                if workspace == "Conversations" and selected_activity:
-                    st.session_state.active_conversation = create_conversation("activity", selected_activity["title"], activity_id=selected_activity["id"])
-                elif workspace == "Homework" and selected_hw and selected_problem:
-                    st.session_state.active_conversation = create_conversation(
-                        "homework", f"{selected_hw['title']}, Problem {selected_problem['number']}", selected_hw["id"], selected_problem["id"])
+                cid = st.session_state.get("active_conversation")
+                messages = load_messages(cid) if cid else []
+
+                if messages:
+                    confirm_new_conversation()
                 else:
-                    st.session_state.pop("active_conversation", None)
-                st.rerun()
+                    start_new_conversation()
             if st.button("Sign Out", use_container_width=True):
                 for key in list(st.session_state):
                     if key.startswith("anna_") or key in [
