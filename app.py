@@ -10,6 +10,8 @@ from session_storage import SessionStorage
 from pathlib import Path
 from uuid import uuid4
 
+import hashlib
+
 ROOT = Path(__file__).resolve().parent
 COURSE = ROOT / "course"
 DB = COURSE / "conversations" / "beta_conversations.db"
@@ -360,8 +362,21 @@ def render_transcript(conv, messages, anonymous=False):
         ])
     return "\n".join(lines).rstrip() + "\n"
 
+def transcript_fingerprint(conv, messages):
+    transcript = render_transcript(conv, messages, anonymous=True)
+    return hashlib.sha256(transcript.encode("utf-8")).hexdigest()
+
 def save_anonymous_transcript(conv, messages):
-    """Save a voluntarily submitted transcript without identifying metadata."""
+    """Save a transcript unless this version was already submitted."""
+    fingerprint = transcript_fingerprint(conv, messages)
+
+    submitted = st.session_state.setdefault(
+        "anna_submitted_transcripts", set()
+    )
+
+    if fingerprint in submitted:
+        return False
+
     directory = Path("/var/lib/anna/submissions")
     transcript = render_transcript(conv, messages, anonymous=True)
 
@@ -371,7 +386,8 @@ def save_anonymous_transcript(conv, messages):
     with destination.open("x", encoding="utf-8") as file:
         file.write(transcript)
 
-    return filename
+    submitted.add(fingerprint)
+    return True
 
 def get_conversation(cid):
     if not cid:
@@ -779,15 +795,21 @@ def confirm_sign_out():
         "with your instructor? Sharing is optional and has no effect on your grade."
     )
 
-    if st.button("Share anonymously", key="signout_share", use_container_width=True):
-        cid = st.session_state.get("active_conversation")
-        conv = get_conversation(cid)
-        messages = load_messages(cid)
-
+    if st.button(
+        "Share anonymously with instructor",
+        disabled=not messages,
+        help="Voluntary and ungraded. Sends this conversation to your instructor without account identifiers.",
+    ):
         try:
-            save_anonymous_transcript(conv, messages)
+            saved = save_anonymous_transcript(conv, messages)
+
+            if saved:
+                st.success("Conversation shared successfully. Thank you!")
+            else:
+                st.info("This version of the conversation has already been shared.")
+
         except OSError:
-            st.error("Unable to share. Please try again.")
+            st.error("Unable to share the conversation. Please try again.")
             return
 
         complete_sign_out()
@@ -810,8 +832,9 @@ def confirm_new_conversation():
         messages = load_messages(st.session_state.active_conversation)
 
         try:
-            save_anonymous_transcript(conv, messages)
-            st.session_state["anna_share_success"] = True
+            saved = save_anonymous_transcript(conv, messages)
+            st.session_state["anna_share_success"] = saved
+            st.session_state["anna_already_shared"] = not saved
         except OSError:
             st.error("Unable to share. Please try again.")
             return
