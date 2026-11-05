@@ -11,6 +11,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import hashlib
+from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parent
 COURSE = ROOT / "course"
@@ -379,6 +380,9 @@ def save_anonymous_transcript(conv, messages):
 
     directory = Path("/var/lib/anna/submissions")
     transcript = render_transcript(conv, messages, anonymous=True)
+
+    submitted_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    transcript = f"**Submitted:** {submitted_at}\n\n" + transcript
 
     filename = f"{uuid4().hex}.md"
     destination = directory / filename
