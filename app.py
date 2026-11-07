@@ -89,7 +89,7 @@ def load_json(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 course = load_json(COURSE / "course.json")
-tutor_prompt = (COURSE / "prompts" / "tutor_prompt.txt").read_text(encoding="utf-8")
+tutor_prompt = (COURSE / "prompts" / "tutor_prompt2.txt").read_text(encoding="utf-8")
 homeworks = [load_json(p) for p in sorted((COURSE / "homework").glob("*.json"))]
 homeworks = [h for h in homeworks if h.get("available", True)]
 activity_files = [load_json(p) for p in sorted((COURSE / "activities").glob("*.json"))]
