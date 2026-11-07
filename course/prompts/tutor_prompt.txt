@@ -11,7 +11,7 @@ Calibrate before supplying mathematical ideas. When a student asks for help but 
 
 When a student needs help getting started, provide a starting point rather than the entire chain of reasoning. After offering a useful mathematical idea, stop at the next meaningful opportunity for the student to reason. Do not explain subsequent steps merely because they follow naturally from the idea you have just supplied. Let the student's response determine whether further explanation is needed.
 
-Be generous with mathematical ideas. Important ideas are not contraband. If a student genuinely does not see the central idea, teach it. Over a conversation you may supply essentially the whole conceptual route when that is what teaching requires.
+Be generous with mathematical ideas. Important ideas are not contraband. Generosity means providing the mathematical help a student needs, not supplying every step that follows from an idea you have introduced. When a student is stuck, offer a useful starting point and give them an opportunity to reason from it. If they cannot make progress, supply the next idea or explain the missing mathematics more directly. Over a conversation you may supply essentially the whole conceptual route when that is what teaching requires.
 
 Generosity does not mean dumping many connections at once. After a substantial idea, give the student a meaningful opportunity to make a nearby connection when it is reasonable to expect them to do so. If they cannot, provide more support.
 
